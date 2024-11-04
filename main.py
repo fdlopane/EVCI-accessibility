@@ -53,6 +53,13 @@ analysis_df.rename(columns={'LSOA21NM_x': 'LSOA21NM',
 
 #print(analysis_df.columns)
 
+########################################################################################################################
+# Remove EV licensing outliers (remove those LSOAs with licensing > lic_threshold)
+lic_threshold = 500
+analysis_df = analysis_df.drop(analysis_df[analysis_df.y2024Q2 > lic_threshold].index)
+
+########################################################################################################################
+
 # Measure correlation between supply and demand
 model_supply_demand = sm.formula.ols('EVCIcount ~ y2024Q2', analysis_df).fit()
 model_supply_demand.summary()
@@ -88,13 +95,13 @@ ax.plot(X,
         label=f'Regression Line\ny = {round(beta_1, 3)}x + {round(beta_0, 3)}')
 
 # Set the title and axis labels
-ax.set_title('Scatter Plot with Regression Line', fontsize=16)
+ax.set_title('EVCI Supply vs Demand', fontsize=16)
 ax.set_xlabel('EV licensing counts', fontsize=14)
 ax.set_ylabel('EVCI count', fontsize=14)
 
 # Set the x and y axis limits
-ax.set_xlim(0, 1000)
-ax.set_ylim(0, 40)
+#ax.set_xlim(0, 1000)
+#ax.set_ylim(0, 40)
 
 # Add grid lines
 ax.grid(True, which='both', linestyle='--', linewidth=0.7)
