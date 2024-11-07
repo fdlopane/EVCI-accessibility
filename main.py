@@ -14,7 +14,16 @@ import statsmodels
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import os
 
+# Create the EVCI-year column in EVCI data set
+if not os.path.exists(generated["EVCI-London"]):
+    # Import EVCI counts at lsoa level
+    EVCI = pd.read_csv(inputs["EVCI-points-raw"])
+    # Extract the year from the dateCreate column
+    EVCI["EVCIyear"] = EVCI["dateCreate"].str[6:10]
+    # Save the data
+    EVCI.to_csv(generated["EVCI-London"], index=False)
 
 # Import EVCI counts at lsoa level
 EVCI = pd.read_csv(inputs["EVCI-LSOA"])

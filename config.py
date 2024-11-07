@@ -2,8 +2,11 @@
 
 inputs = {}
 inputs["EVCI-LSOA"] = "./input-data/EVCI/EVCI-count-LSOA.csv"
+inputs["EVCI-points-raw"] = "./input-data/EVCI/EVCI-points-raw.csv"
 inputs["EV-counts-LSOA"] = "./input-data/EV_licensing_London/EV-licensing-LSOA-GLA.csv"
 
+generated = {}
+generated["EVCI-London"] = "./generated-files/EVCI-London.csv"
 
 outputs = {}
-outputs["YYY"] = "YYY"
+outputs["input-analytics-db"] = "./output-data/input-supply-demand-cleanmerge.csv"
