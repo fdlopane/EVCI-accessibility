@@ -7,6 +7,8 @@ inputs["EV-counts-LSOA"] = "./input-data/EV_licensing_London/EV-licensing-LSOA-G
 
 generated = {}
 generated["EVCI-London"] = "./generated-files/EVCI-London.csv"
+generated["input-analytics-db"] = "./generated-files/input-supply-demand-cleanmerge.csv"
+generated["input-totals"] = "./generated-files/input-supply-demand-totals.csv"
 
 outputs = {}
-outputs["input-analytics-db"] = "./output-data/input-supply-demand-cleanmerge.csv"
+
