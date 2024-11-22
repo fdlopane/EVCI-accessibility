@@ -36,14 +36,25 @@ EV_counts = pd. read_csv(inputs["EV-counts-LSOA"])
 # EV_counts.fillna(0, inplace=True)
 
 # Merge the datafames for regression analysis
-analysis_df =  EVCI.merge(EV_counts, on='LSOA21CD')
+analysis_df = EVCI.merge(EV_counts, on='LSOA21CD')
 # Rename and drop duplicate columns
 # NOTE delete ALL dashes (-), spaces, and underscores (_) from column names
 analysis_df.drop(columns=['LSOA21NM_y', 'GlobalID_y'], inplace=True)
+
 analysis_df.rename(columns={'LSOA21NM_x': 'LSOA21NM',
                             'GlobalID_x': 'GlobalID',
+                            'EVCI-2024': 'EVCI2024',
+                            'EVCI-2023': 'EVCI2023',
+                            'EVCI-2022': 'EVCI2022',
+                            'EVCI-2021': 'EVCI2021',
+                            'EVCI-2020': 'EVCI2020',
+                            'EVCI-2019': 'EVCI2019',
+                            'EVCI-2018': 'EVCI2018',
+                            'EVCI-2017': 'EVCI2017',
+                            'EVCI-2015': 'EVCI2015',
+                            'EVCI-2013': 'EVCI2013',
+                            'EVCI-2012': 'EVCI2012',
                             '_Fuel': 'Fuel',
-                            'EVCI-count': 'EVCIcount',
                             '_Keepershi': 'Keepership',
                             '_2024 Q2': 'y2024Q2',
                             '_2024 Q1': 'y2024Q1',
@@ -58,19 +69,57 @@ analysis_df.rename(columns={'LSOA21NM_x': 'LSOA21NM',
                             '_2021 Q4': 'y2021Q4',
                             '_2021 Q3': 'y2021Q3',
                             '_2021 Q2': 'y2021Q2',
+                            '_2021 Q1': 'y2021Q1',
+                            '_2020 Q4': 'y2020Q4',
+                            '_2020 Q3': 'y2020Q3',
+                            '_2020 Q2': 'y2020Q2',
+                            '_2020 Q1': 'y2020Q1',
+                            '_2019 Q4': 'y2019Q4',
+                            '_2019 Q3': 'y2019Q3',
+                            '_2019 Q2': 'y2019Q2',
+                            '_2019 Q1': 'y2019Q1',
+                            '_2018 Q4': 'y2018Q4',
+                            '_2018 Q3': 'y2018Q3',
+                            '_2018 Q2': 'y2018Q2',
+                            '_2018 Q1': 'y2018Q1',
+                            '_2017 Q4': 'y2017Q4',
+                            '_2017 Q3': 'y2017Q3',
+                            '_2017 Q2': 'y2017Q2',
+                            '_2017 Q1': 'y2017Q1',
+                            '_2016 Q4': 'y2016Q4',
+                            '_2016 Q3': 'y2016Q3',
+                            '_2016 Q2': 'y2016Q2',
+                            '_2016 Q1': 'y2016Q1',
+                            '_2015 Q4': 'y2015Q4',
+                            '_2015 Q3': 'y2015Q3',
+                            '_2015 Q2': 'y2015Q2',
+                            '_2015 Q1': 'y2015Q1',
+                            '_2014 Q4': 'y2014Q4',
+                            '_2014 Q3': 'y2014Q3',
+                            '_2014 Q2': 'y2014Q2',
+                            '_2014 Q1': 'y2014Q1',
+                            '_2013 Q4': 'y2013Q4',
+                            '_2013 Q3': 'y2013Q3',
+                            '_2013 Q2': 'y2013Q2',
+                            '_2013 Q1': 'y2013Q1',
+                            '_2012 Q4': 'y2012Q4',
+                            '_2012 Q3': 'y2012Q3',
+                            '_2012 Q2': 'y2012Q2',
+                            '_2012 Q1': 'y2012Q1',
+                            '_2011 Q4': 'y2011Q4',
                             '_2021 Q1': 'y2021Q1'}, inplace=True)
 
-#print(analysis_df.columns)
+print(analysis_df.columns)
 
 ########################################################################################################################
 # Remove EV licensing outliers (remove those LSOAs with licensing > lic_threshold)
-lic_threshold = 500
+lic_threshold = 1000
 analysis_df = analysis_df.drop(analysis_df[analysis_df.y2024Q2 > lic_threshold].index)
 
 ########################################################################################################################
 
 # Measure correlation between supply and demand
-model_supply_demand = sm.formula.ols('EVCIcount ~ y2024Q2', analysis_df).fit()
+model_supply_demand = sm.formula.ols('EVCI2024 ~ y2024Q2', analysis_df).fit()
 model_supply_demand.summary()
 
 ########################################################################################################################
@@ -86,7 +135,7 @@ fig, ax = plt.subplots(figsize=(20, 10), dpi=120)
 # Plot the scatter plot with custom colors
 analysis_df.plot(kind='scatter',
                  x='y2024Q2',
-                 y='EVCIcount',
+                 y='EVCI2024',
                  ax=ax,
                  color='skyblue',
                  s=30,
