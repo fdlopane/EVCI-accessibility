@@ -105,7 +105,16 @@ else:
 
 if not os.path.exists(generated["input-totals"]):
     # List the columns I want to calculate the sum of
-    fields = ["EVCI2024", "EVCI2023", "EVCI2022", "EVCI2021", "EVCI2020", "EVCI2019", "EVCI2018", "EVCI2017", "EVCI2015", "EVCI2013", "EVCI2012", "y2024Q1", "y2024Q2", "y2023Q4", "y2023Q3", "y2023Q2", "y2023Q1", "y2022Q4", "y2022Q3", "y2022Q2", "y2022Q1", "y2021Q4", "y2021Q3", "y2021Q2", "y2021Q1", "y2020Q4", "y2020Q3", "y2020Q2", "y2020Q1", "y2019Q4", "y2019Q3", "y2019Q2", "y2019Q1", "y2018Q4", "y2018Q3", "y2018Q2", "y2018Q1", "y2017Q4", "y2017Q3", "y2017Q2", "y2017Q1", "y2016Q4", "y2016Q3", "y2016Q2", "y2016Q1", "y2015Q4", "y2015Q3", "y2015Q2", "y2015Q1", "y2014Q4", "y2014Q3", "y2014Q2", "y2014Q1", "y2013Q4", "y2013Q3", "y2013Q2", "y2013Q1", "y2012Q4", "y2012Q3", "y2012Q2", "y2012Q1", "y2011Q4"]
+    fields = ["EVCI2024", "EVCI2023", "EVCI2022", "EVCI2021", "EVCI2020",
+              "EVCI2019", "EVCI2018", "EVCI2017", "EVCI2015", "EVCI2013", "EVCI2012",
+              "y2024Q1", "y2024Q2",
+              "y2023Q4", "y2023Q3", "y2023Q2", "y2023Q1", "y2022Q4", "y2022Q3", "y2022Q2", "y2022Q1",
+              "y2021Q4", "y2021Q3", "y2021Q2", "y2021Q1", "y2020Q4", "y2020Q3", "y2020Q2", "y2020Q1",
+              "y2019Q4", "y2019Q3", "y2019Q2", "y2019Q1", "y2018Q4", "y2018Q3", "y2018Q2", "y2018Q1",
+              "y2017Q4", "y2017Q3", "y2017Q2", "y2017Q1", "y2016Q4", "y2016Q3", "y2016Q2", "y2016Q1",
+              "y2015Q4", "y2015Q3", "y2015Q2", "y2015Q1", "y2014Q4", "y2014Q3", "y2014Q2", "y2014Q1",
+              "y2013Q4", "y2013Q3", "y2013Q2", "y2013Q1", "y2012Q4", "y2012Q3", "y2012Q2", "y2012Q1",
+              "y2011Q4"]
     fields.sort()
 
     statistics = pd.DataFrame()
@@ -116,3 +125,5 @@ if not os.path.exists(generated["input-totals"]):
 
     # Save the statistics
     statistics.to_csv(generated["input-totals"], index=False)
+
+########################################################################################################################
