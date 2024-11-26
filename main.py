@@ -33,8 +33,14 @@ EVCI = pd.read_csv(inputs["EVCI-LSOA"])
 # Note 338 out of 4994 LSOAs have null values
 EV_counts = pd. read_csv(inputs["EV-counts-LSOA"])
 
-# TODO: deal with null and -1 values is EV_counts
-# EV_counts.fillna(0, inplace=True)
+# Deal with null values is EV_counts --> imputed value of 2.5 for the following reason
+# Data source: https://www.gov.uk/government/statistical-data-sets/vehicle-licensing-statistics-data-files
+'''
+In order to keep these files to a reasonable size,
+small areas which have never had 5 or more vehicles in scope are excluded from these datasets,
+with those vehicles combined into the Miscellaneous row. This means a number of LSOAs will be missing from the file.
+'''
+EV_counts.fillna(2.5, inplace=True)
 
 # Merge the datafames for regression analysis
 analysis_df = EVCI.merge(EV_counts, on='LSOA21CD')
@@ -203,6 +209,7 @@ if SD_flag == True:
 ########################################################################################################################
 
 # 2021 Cross-sectional analysis
+
 analysis_2021 = analysis_df[["LSOA21CD", "LSOA21NM", "EVCI2021", "y2021Q4"]]
 
 # London LSOA codes
@@ -259,9 +266,11 @@ ASG_London.reset_index()
 print()
 print("###############################################################################################################")
 print("WARNING: London has ", len(London_LSOA_codes), " LSOAs.")
-print("While house prices are available for ", len(Mean_house_prices_London), " LSOAs.")
-print("And ASG available for ", len(ASG_London), "LSOAs.")
-print("And deprivation data available for ", len(HH_deprivation), "LSOAs.")
+print("House prices are available for ", len(Mean_house_prices_London), " LSOAs.")
+print("ASG available for ", len(ASG_London), "LSOAs.")
+print("Deprivation data available for ", len(HH_deprivation), "LSOAs.")
+print("EVCI supply available for ", len(EVCI), "LSOAs.")
+print("EV licensing available for ", len(EV_counts), "LSOAs.")
 print("###############################################################################################################")
 print()
 
@@ -286,39 +295,63 @@ analysis_2021["accessibility"] = analysis_2021["EVCI2021"] / analysis_2021["y202
 
 # Remove LSOA codes and names, and HH number
 analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
+#analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
 
-# Pearson correlation
-#print(analysis_2021.corr(method='pearson'))
+# Correlation matrix
+CSCA_2021_flag = False
+if CSCA_2021_flag == True:
+    # Pearson correlation
+    #print(analysis_2021.corr(method='pearson'))
 
-# Plot the correlation matrix
-plt.rcParams["axes.grid"] = False
-f = plt.figure(figsize=(10, 10))
+    # Plot the correlation matrix
+    plt.rcParams["axes.grid"] = False
+    f = plt.figure(figsize=(10, 10))
 
-# Plot the correlation matrix with a 'coolwarm' color map
-corr_matrix = analysis_2021.corr(method='pearson')
-plt.matshow(corr_matrix, fignum=f.number, cmap='RdBu_r')
+    # Plot the correlation matrix with a 'coolwarm' color map
+    corr_matrix = analysis_2021.corr(method='pearson')
+    plt.matshow(corr_matrix, fignum=f.number, cmap='RdBu_r')
 
-# Add a color bar using the same color map as the heatmap
-cb = plt.colorbar()
-cb.ax.tick_params(labelsize=10)
+    # Add a color bar using the same color map as the heatmap
+    cb = plt.colorbar()
+    cb.ax.tick_params(labelsize=10)
 
-# Add tick labels
-plt.xticks(range(analysis_2021.shape[1]), analysis_2021.columns, fontsize=10, rotation=90)
-plt.yticks(range(analysis_2021.shape[1]), analysis_2021.columns, fontsize=10)
+    # Add tick labels
+    plt.xticks(range(analysis_2021.shape[1]), analysis_2021.columns, fontsize=10, rotation=90)
+    plt.yticks(range(analysis_2021.shape[1]), analysis_2021.columns, fontsize=10)
 
-# Add the correlation coefficient values to each cell
-for (i, j), val in np.ndenumerate(corr_matrix.values):
-    plt.text(j, i, f'{val:.2f}', ha='center', va='center', fontsize=10, color='black')
+    # Add the correlation coefficient values to each cell
+    for (i, j), val in np.ndenumerate(corr_matrix.values):
+        plt.text(j, i, f'{val:.2f}', ha='center', va='center', fontsize=10, color='black')
 
-# Add a title
-plt.title('Correlation Matrix', fontsize=10)
+    # Add a title
+    plt.title('Correlation Matrix', fontsize=10)
 
-# # Save the image as a PNG file
-# plt.savefig('Plot/correlation_matrix_improved.png', format='png', dpi=300, bbox_inches='tight')
+    # # Save the image as a PNG file
+    # plt.savefig('Plot/correlation_matrix_improved.png', format='png', dpi=300, bbox_inches='tight')
 
-# Display the chart
-plt.show()
+    # Display the chart
+    plt.show()
 
-print(corr_matrix)
-# Save correltation matrix to csv
-corr_matrix.to_csv(outputs["correlation_matrix_2021"])
+    #print(corr_matrix)
+    # Save correltation matrix to csv
+    corr_matrix.to_csv(outputs["correlation_matrix_2021"])
+
+# OLS analysis 2021
+
+OLS_2021_flag = True
+if OLS_2021_flag == True:
+    # Remove NaNs
+    analysis_2021 = analysis_2021.dropna()
+
+    # Define the independent (X) and dependent (Y) variables
+    X = analysis_2021[["ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]] # Independent variables
+    Y = analysis_2021["accessibility"] # Dependent variable
+
+    # Add a constant to the independent variables (for the intercept)
+    X = sm.add_constant(X)
+
+    # Fit the OLS model
+    model = sm.OLS(Y, X).fit()
+
+    # View the model summary
+    print(model.summary())
