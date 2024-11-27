@@ -279,7 +279,14 @@ print()
 
 # Only keep relevant columns:
 Median_house_prices_London = Median_house_prices_London[["LSOA21CD", "Year ending Dec 2021"]]
-Median_house_prices_London.rename(columns={"Year ending Dec 2021": "Median_house_price_2021"}, inplace=True)
+Median_house_prices_London.rename(columns={"Year ending Dec 2021": "Med_HP_2021"}, inplace=True)
+# Remove commas and ":" from the median house prices
+Median_house_prices_London["Med_HP_2021"] = Median_house_prices_London["Med_HP_2021"].str.replace(",", "")
+Median_house_prices_London["Med_HP_2021"] = Median_house_prices_London["Med_HP_2021"].str.replace(":", "")
+# Drop the rows with "" in the median house prices
+Median_house_prices_London = Median_house_prices_London[Median_house_prices_London["Med_HP_2021"] != ""]
+# Convert the median house prices to float
+Median_house_prices_London["Med_HP_2021"] = Median_house_prices_London["Med_HP_2021"].astype(float)
 
 ASG_London = ASG_London[["LSOA21CD", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE"]]
 
@@ -294,8 +301,8 @@ analysis_2021 = analysis_2021.merge(HH_deprivation, on="LSOA21CD", how="outer")
 analysis_2021["accessibility"] = analysis_2021["EVCI2021"] / analysis_2021["y2021Q4"]
 
 # Remove LSOA codes and names, and HH number
-analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
-#analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
+#analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
+analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
 
 # Correlation matrix
 CSCA_2021_flag = False
@@ -343,9 +350,52 @@ if OLS_2021_flag == True:
     # Remove NaNs
     analysis_2021 = analysis_2021.dropna()
 
+    # OLS analysis for SUPPLY:
+    print()
+    print("############################################################################################################")
+    print("OLS analysis for SUPPLY:")
+    # Define the list of variables:
+    list_of_variables = ["y2021Q4", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
+    for i in list_of_variables:
+        X = analysis_2021[[i]]
+        Y = analysis_2021["EVCI2021"]
+        X = sm.add_constant(X)
+        model = sm.OLS(Y, X).fit()
+        print(model.summary())
+
+    # OLS analysis for DEMAND:
+    print()
+    print("###########################################################################################################")
+    print("OLS analysis for DEMAND:")
+    # Define the list of variables:
+    list_of_variables = ["EVCI2021", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
+    for i in list_of_variables:
+        X = analysis_2021[[i]]
+        Y = analysis_2021["y2021Q4"]
+        X = sm.add_constant(X)
+        model = sm.OLS(Y, X).fit()
+        print(model.summary())
+
+    # OLS analysis for ACCESSIBILITY:
+    print()
+    print("###########################################################################################################")
+    print("OLS analysis for ACCESSIBILITY:")
+    # Define the list of variables:
+    list_of_variables = ["accessibility", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
+    for i in list_of_variables:
+        X = analysis_2021[[i]]
+        Y = analysis_2021["EVCI2021"]
+        X = sm.add_constant(X)
+        model = sm.OLS(Y, X).fit()
+        print(model.summary())
+
+    '''
     # Define the independent (X) and dependent (Y) variables
-    X = analysis_2021[["ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]] # Independent variables
-    Y = analysis_2021["accessibility"] # Dependent variable
+    X = analysis_2021[["ASG_C1"]] # Independent variables
+    #X = analysis_2021[["y2021Q4", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]] # Independent variables
+    #Y = analysis_2021["accessibility"] # Dependent variable
+    Y = analysis_2021["EVCI2021"] # Dependent variable
+    #Y = analysis_2021["y2021Q4"] # Dependent variable
 
     # Add a constant to the independent variables (for the intercept)
     X = sm.add_constant(X)
@@ -355,3 +405,4 @@ if OLS_2021_flag == True:
 
     # View the model summary
     print(model.summary())
+    '''
