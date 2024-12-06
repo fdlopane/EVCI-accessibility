@@ -16,6 +16,9 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
 import numpy as np
+from mgwr.gwr import GWR
+from mgwr.sel_bw import Sel_BW
+from scipy.spatial import distance
 
 # Create the EVCI-year column in EVCI data set
 if not os.path.exists(generated["EVCI-London"]):
@@ -302,7 +305,8 @@ analysis_2021["accessibility"] = analysis_2021["EVCI2021"] / analysis_2021["y202
 
 # Remove LSOA codes and names, and HH number
 #analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
-analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
+#analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
+analysis_2021.drop(columns=["LSOA21NM", "HH_number"], inplace=True)
 
 # Correlation matrix
 CSCA_2021_flag = False
@@ -344,8 +348,7 @@ if CSCA_2021_flag == True:
     corr_matrix.to_csv(outputs["correlation_matrix_2021"])
 
 # OLS analysis 2021
-
-OLS_2021_flag = True
+OLS_2021_flag = False
 if OLS_2021_flag == True:
     # Remove NaNs
     analysis_2021 = analysis_2021.dropna()
@@ -406,3 +409,60 @@ if OLS_2021_flag == True:
     # View the model summary
     print(model.summary())
     '''
+
+# Geographically Weighted Regression (GWR) analysis 2021
+GWR_flag = True
+if GWR_flag == True:
+    # import the London centroids shapefile with geopandas
+    London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
+    # Extract the coordinates of the centroids
+    London_LSOA_centroids["x"] = London_LSOA_centroids.centroid.x
+    London_LSOA_centroids["y"] = London_LSOA_centroids.centroid.y
+
+    # Only keep the relevant columns
+    London_LSOA_centroids = London_LSOA_centroids[["LSOA21CD", "x", "y"]]
+
+    print(analysis_2021.columns)
+
+    # Merge the centroids with the analysis_2021 dataframe
+    analysis_2021 = analysis_2021.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
+    analysis_2021.drop(columns=["LSOA21CD"], inplace=True)
+
+    # Step 1: Prepare spatial coordinates and data
+    coords = analysis_2021[["x", "y"]].values  # Spatial coordinates
+    X = analysis_2021[["Med_HP_2021"]].values  # Independent variables
+    Y = analysis_2021["accessibility"].values.reshape(-1, 1)  # Dependent variable reshaped for GWR
+
+    # Step 2: Add a constant to the independent variables (for the intercept)
+    from mgwr.utils import add_constant
+    X = add_constant(X)
+
+    # Step 3: Select the optimal bandwidth
+    selector = Sel_BW(coords, Y, X)
+    bandwidth = selector.search()
+    print(f"Optimal Bandwidth: {bandwidth}")
+
+    # Step 4: Fit the GWR model
+    model = GWR(coords, Y, X, bandwidth)
+    gwr_results = model.fit()
+
+    # Step 5: Inspect results
+    print(gwr_results.summary())
+
+    # Step 5: Inspect results
+    print(gwr_results.summary())
+
+    # Step 6: Extract local coefficients
+    local_coefficients = gwr_results.params
+    print("Local Coefficients:\n", local_coefficients)
+
+    # Step 7: Visualize local R^2
+    import matplotlib.pyplot as plt
+
+    local_r2 = gwr_results.localR2
+    plt.scatter(data['longitude'], data['latitude'], c=local_r2, cmap='viridis', s=50)
+    plt.colorbar(label='Local R²')
+    plt.title("Geographically Weighted Regression: Local R²")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
