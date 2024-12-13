@@ -19,6 +19,7 @@ import numpy as np
 from mgwr.gwr import GWR
 from mgwr.sel_bw import Sel_BW
 from scipy.spatial import distance
+from utils import *
 
 # Create the EVCI-year column in EVCI data set
 if not os.path.exists(generated["EVCI-London"]):
@@ -128,90 +129,14 @@ analysis_df = analysis_df.drop(analysis_df[analysis_df.y2024Q2 > lic_threshold].
 # Measure correlation between supply and demand
 SD_flag = False
 
+supply_var = "EVCI2024"
+demand_var = "y2024Q2"
+
 if SD_flag == True:
-    model_supply_demand = sm.formula.ols('EVCI2024 ~ y2024Q2', analysis_df).fit()
-    model_supply_demand.summary()
+    calculate_corr_matrix_2_var(analysis_df, supply_var, demand_var)
 
-    # Scatter plot demand vs supply
-    # Get the regression model parameters and statistics
-    beta_0, beta_1 = model_supply_demand.params
-    rsq = model_supply_demand.rsquared
-    pval_0, pval_1 = model_supply_demand.pvalues
-
-    # Create a plot object
-    fig, ax = plt.subplots(figsize=(20, 10), dpi=120)
-
-    # Plot the scatter plot with custom colors
-    analysis_df.plot(kind='scatter',
-                     x='y2024Q2',
-                     y='EVCI2024',
-                     ax=ax,
-                     color='skyblue',
-                     s=30,
-                     edgecolor='black',
-                     linewidths=0.6,
-                     alpha=0.9)
-
-    # Plot the regression line
-    X = analysis_df.y2024Q2
-    ax.plot(X,
-            X * beta_1 + beta_0,
-            color='darkred',
-            linewidth=2,
-            linestyle='--',
-            label=f'Regression Line\ny = {round(beta_1, 3)}x + {round(beta_0, 3)}')
-
-    # Set the title and axis labels
-    ax.set_title('EVCI Supply vs Demand', fontsize=16)
-    ax.set_xlabel('EV licensing counts', fontsize=14)
-    ax.set_ylabel('EVCI count', fontsize=14)
-
-    # Set the x and y axis limits
-    #ax.set_xlim(0, 1000)
-    #ax.set_ylim(0, 40)
-
-    # Add grid lines
-    ax.grid(True, which='both', linestyle='--', linewidth=0.7)
-
-    # Show the legend
-    ax.legend()
-
-    #plt.savefig('Plot_final_0826/Walk_and_Transit_Level_4.png', format='png', dpi=120)
-
-    # Display the chart
-    plt.show()
-
-    # Print the regression equation and other statistics
-    print()
-    print("----------------------------------------------------------")
-    print("Supply vs Demand regression equation and other statistics")
-    print("y =", round(beta_1, 3), "x +", round(beta_0, 3))
-    print("Rsq = ", rsq)
-    print("p-value = ", round(pval_1, 5))
-    print("----------------------------------------------------------")
-    print()
-
-    # Plot regression statistics
-    # Convert the regression results to a string
-    result_summary_SD = model_supply_demand.summary().as_text()
-
-    # Create a Matplotlib figure
-    fig, ax = plt.subplots(figsize=(10, 6))  # You can adjust the size
-
-    # Hide the axes
-    ax.axis('off')
-
-    # Display the regression results text in the figure
-    ax.text(0, 1, result_summary_SD, fontsize=10, ha='left', va='top', family='monospace')
-
-    # Save as a PNG file
-    #plt.savefig('Plot/OLS_regression_results_Level_4_WT.png', bbox_inches='tight', dpi=300)
-
-    # Display the image
-    plt.show()
 ########################################################################################################################
-
-# 2021 Cross-sectional analysis
+# 2021 analysis
 
 analysis_2021 = analysis_df[["LSOA21CD", "LSOA21NM", "EVCI2021", "y2021Q4"]]
 
@@ -311,106 +236,29 @@ analysis_2021.drop(columns=["LSOA21NM", "HH_number"], inplace=True)
 # Correlation matrix
 CSCA_2021_flag = False
 if CSCA_2021_flag == True:
-    # Pearson correlation
-    #print(analysis_2021.corr(method='pearson'))
-
-    # Plot the correlation matrix
-    plt.rcParams["axes.grid"] = False
-    f = plt.figure(figsize=(10, 10))
-
-    # Plot the correlation matrix with a 'coolwarm' color map
-    corr_matrix = analysis_2021.corr(method='pearson')
-    plt.matshow(corr_matrix, fignum=f.number, cmap='RdBu_r')
-
-    # Add a color bar using the same color map as the heatmap
-    cb = plt.colorbar()
-    cb.ax.tick_params(labelsize=10)
-
-    # Add tick labels
-    plt.xticks(range(analysis_2021.shape[1]), analysis_2021.columns, fontsize=10, rotation=90)
-    plt.yticks(range(analysis_2021.shape[1]), analysis_2021.columns, fontsize=10)
-
-    # Add the correlation coefficient values to each cell
-    for (i, j), val in np.ndenumerate(corr_matrix.values):
-        plt.text(j, i, f'{val:.2f}', ha='center', va='center', fontsize=10, color='black')
-
-    # Add a title
-    plt.title('Correlation Matrix', fontsize=10)
-
-    # # Save the image as a PNG file
-    # plt.savefig('Plot/correlation_matrix_improved.png', format='png', dpi=300, bbox_inches='tight')
-
-    # Display the chart
-    plt.show()
-
-    #print(corr_matrix)
-    # Save correltation matrix to csv
-    corr_matrix.to_csv(outputs["correlation_matrix_2021"])
+    plt_and_save_corr_matrix(analysis_2021, outputs["correlation_matrix_2021"])
 
 # OLS analysis 2021
 OLS_2021_flag = False
 if OLS_2021_flag == True:
-    # Remove NaNs
-    analysis_2021 = analysis_2021.dropna()
 
-    # OLS analysis for SUPPLY:
-    print()
-    print("############################################################################################################")
-    print("OLS analysis for SUPPLY:")
-    # Define the list of variables:
-    list_of_variables = ["y2021Q4", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
-    for i in list_of_variables:
-        X = analysis_2021[[i]]
-        Y = analysis_2021["EVCI2021"]
-        X = sm.add_constant(X)
-        model = sm.OLS(Y, X).fit()
-        print(model.summary())
+    # OLS for SUPPLY
+    dependent_variable = "EVCI2021"
+    independent_variables = ["y2021Q4", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
+    OLS_analysis(analysis_2021, dependent_variable, independent_variables)
 
-    # OLS analysis for DEMAND:
-    print()
-    print("###########################################################################################################")
-    print("OLS analysis for DEMAND:")
-    # Define the list of variables:
-    list_of_variables = ["EVCI2021", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
-    for i in list_of_variables:
-        X = analysis_2021[[i]]
-        Y = analysis_2021["y2021Q4"]
-        X = sm.add_constant(X)
-        model = sm.OLS(Y, X).fit()
-        print(model.summary())
+    # OLS for DEMAND
+    dependent_variable = "y2021Q4"
+    independent_variables = ["EVCI2021", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
+    OLS_analysis(analysis_2021, dependent_variable, independent_variables)
 
-    # OLS analysis for ACCESSIBILITY:
-    print()
-    print("###########################################################################################################")
-    print("OLS analysis for ACCESSIBILITY:")
-    # Define the list of variables:
-    list_of_variables = ["accessibility", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
-    for i in list_of_variables:
-        X = analysis_2021[[i]]
-        Y = analysis_2021["EVCI2021"]
-        X = sm.add_constant(X)
-        model = sm.OLS(Y, X).fit()
-        print(model.summary())
-
-    '''
-    # Define the independent (X) and dependent (Y) variables
-    X = analysis_2021[["ASG_C1"]] # Independent variables
-    #X = analysis_2021[["y2021Q4", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]] # Independent variables
-    #Y = analysis_2021["accessibility"] # Dependent variable
-    Y = analysis_2021["EVCI2021"] # Dependent variable
-    #Y = analysis_2021["y2021Q4"] # Dependent variable
-
-    # Add a constant to the independent variables (for the intercept)
-    X = sm.add_constant(X)
-
-    # Fit the OLS model
-    model = sm.OLS(Y, X).fit()
-
-    # View the model summary
-    print(model.summary())
-    '''
+    # OLS for ACCESSIBILITY
+    dependent_variable = "accessibility"
+    independent_variables = ["EVCI2021", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
+    OLS_analysis(analysis_2021, dependent_variable, independent_variables)
 
 # Geographically Weighted Regression (GWR) analysis 2021
+
 GWR_flag = True
 if GWR_flag == True:
     # import the London centroids shapefile with geopandas
@@ -422,47 +270,68 @@ if GWR_flag == True:
     # Only keep the relevant columns
     London_LSOA_centroids = London_LSOA_centroids[["LSOA21CD", "x", "y"]]
 
-    print(analysis_2021.columns)
-
     # Merge the centroids with the analysis_2021 dataframe
     analysis_2021 = analysis_2021.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
-    analysis_2021.drop(columns=["LSOA21CD"], inplace=True)
+    #analysis_2021.drop(columns=["LSOA21CD"], inplace=True)
+
+    # Remove NaNs
+    analysis_2021 = analysis_2021.dropna()
 
     # Step 1: Prepare spatial coordinates and data
-    coords = analysis_2021[["x", "y"]].values  # Spatial coordinates
+    u = analysis_2021["x"]
+    v = analysis_2021["y"]
+    coords = list(zip(u,v))  # Spatial coordinates
     X = analysis_2021[["Med_HP_2021"]].values  # Independent variables
     Y = analysis_2021["accessibility"].values.reshape(-1, 1)  # Dependent variable reshaped for GWR
 
-    # Step 2: Add a constant to the independent variables (for the intercept)
-    from mgwr.utils import add_constant
-    X = add_constant(X)
-
-    # Step 3: Select the optimal bandwidth
+    # Step 2: Select the optimal bandwidth
     selector = Sel_BW(coords, Y, X)
     bandwidth = selector.search()
     print(f"Optimal Bandwidth: {bandwidth}")
 
-    # Step 4: Fit the GWR model
-    model = GWR(coords, Y, X, bandwidth)
-    gwr_results = model.fit()
+    # Step 3: Fit the GWR model
+    gwr_results = GWR(coords, Y, X, bandwidth).fit()
 
-    # Step 5: Inspect results
+    # Step 4: Inspect results
     print(gwr_results.summary())
 
-    # Step 5: Inspect results
-    print(gwr_results.summary())
+    # Step 5: Extract local coefficients
+    #local_coefficients = gwr_results.params
+    #print("Local Coefficients:\n", local_coefficients)
 
-    # Step 6: Extract local coefficients
-    local_coefficients = gwr_results.params
-    print("Local Coefficients:\n", local_coefficients)
 
-    # Step 7: Visualize local R^2
-    import matplotlib.pyplot as plt
+    London_LSOA_polygons = gpd.read_file(inputs["London_LSOA_polygons"])
+    # Now use the polygons geometry for the analysis_2021 dataframe
+    analysis_2021 = analysis_2021.merge(London_LSOA_polygons, on="LSOA21CD", how="outer")
+    # Now turn the analysis_2021 dataframe into a geodataframe
+    analysis_2021 = gpd.GeoDataFrame(analysis_2021)
 
+    analysis_2021.plot()
+    plt.show()
+
+# Link to GWR tutorial (follow for visualisation
+# https://deepnote.com/app/carlos-mendez/PYTHON-GWR-and-MGWR-71dd8ba9-a3ea-4d28-9b20-41cc8a282b7a
+
+'''
+    analysis_2021['gwr_R2'] = gwr_results.localR2
+
+    # Step 6: Visualize local R^2
+    fig, ax = plt.subplots(figsize=(6, 6))
+    analysis_2021.plot(column='gwr_R2', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
+             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=ax)
+    ax.set_title('Local R2', fontsize=12)
+    ax.axis("off")
+    # plt.savefig('myMap.png',dpi=150, bbox_inches='tight')
+    plt.show()
+
+'''
+
+'''
     local_r2 = gwr_results.localR2
-    plt.scatter(data['longitude'], data['latitude'], c=local_r2, cmap='viridis', s=50)
+    plt.scatter(analysis_2021['x'], analysis_2021['y'], c=local_r2, cmap='viridis', s=50)
     plt.colorbar(label='Local R²')
     plt.title("Geographically Weighted Regression: Local R²")
     plt.xlabel("x")
     plt.ylabel("y")
     plt.show()
+'''
