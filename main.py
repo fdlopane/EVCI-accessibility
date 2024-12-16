@@ -258,9 +258,9 @@ if OLS_2021_flag == True:
     OLS_analysis(analysis_2021, dependent_variable, independent_variables)
 
 # Geographically Weighted Regression (GWR) analysis 2021
-
-GWR_flag = True
-if GWR_flag == True:
+'''
+GWR_flag_METHOD1 = False
+if GWR_flag_METHOD1 == True:
     # import the London centroids shapefile with geopandas
     London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
     # Extract the coordinates of the centroids
@@ -296,8 +296,8 @@ if GWR_flag == True:
     print(gwr_results.summary())
 
     # Step 5: Extract local coefficients
-    #local_coefficients = gwr_results.params
-    #print("Local Coefficients:\n", local_coefficients)
+    local_coefficients = gwr_results.params
+    print("Local Coefficients:\n", local_coefficients)
 
 
     London_LSOA_polygons = gpd.read_file(inputs["London_LSOA_polygons"])
@@ -306,32 +306,65 @@ if GWR_flag == True:
     # Now turn the analysis_2021 dataframe into a geodataframe
     analysis_2021 = gpd.GeoDataFrame(analysis_2021)
 
-    analysis_2021.plot()
-    plt.show()
+    # Drop NaNs
+    analysis_2021 = analysis_2021.dropna()
 
-# Link to GWR tutorial (follow for visualisation
-# https://deepnote.com/app/carlos-mendez/PYTHON-GWR-and-MGWR-71dd8ba9-a3ea-4d28-9b20-41cc8a282b7a
+    # Link to GWR tutorial (follow for visualisation)
+    # https://deepnote.com/app/carlos-mendez/PYTHON-GWR-and-MGWR-71dd8ba9-a3ea-4d28-9b20-41cc8a282b7a
 
-'''
     analysis_2021['gwr_R2'] = gwr_results.localR2
 
     # Step 6: Visualize local R^2
+    
     fig, ax = plt.subplots(figsize=(6, 6))
     analysis_2021.plot(column='gwr_R2', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
              legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=ax)
+             #legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=ax)
     ax.set_title('Local R2', fontsize=12)
     ax.axis("off")
     # plt.savefig('myMap.png',dpi=150, bbox_inches='tight')
     plt.show()
+    
 
-'''
+    # Step 7: Visualize local coefficients
+    # Add coefficients to the dataframe
+    analysis_2021['gwr_intercept'] = gwr_results.params[:, 0]
+    analysis_2021['gwr_Med_HP_2021'] = gwr_results.params[:, 1]
 
-'''
-    local_r2 = gwr_results.localR2
-    plt.scatter(analysis_2021['x'], analysis_2021['y'], c=local_r2, cmap='viridis', s=50)
-    plt.colorbar(label='Local R²')
-    plt.title("Geographically Weighted Regression: Local R²")
-    plt.xlabel("x")
-    plt.ylabel("y")
+    # Filter/correct t-stats
+    analysis_2021_filtered_t = gwr_results.filter_tvals(alpha=0.05)
+    analysis_2021_filtered_t_df = pd.DataFrame(analysis_2021_filtered_t)
+
+    # Filter t-values: corrected alpha due to multiple testing
+    analysis_2021_filtered_tc = gwr_results.filter_tvals()
+    analysis_2021_filtered_tc_df = pd.DataFrame(analysis_2021_filtered_tc)
+
+    # Map coefficients
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
+
+    analysis_2021.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
+             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[0])
+
+    analysis_2021.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
+             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[1])
+    analysis_2021[analysis_2021_filtered_t_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[1])
+
+    analysis_2021.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
+             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[2])
+    analysis_2021[analysis_2021_filtered_tc_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[2])
+
+    plt.tight_layout()
+
+    axes[0].axis("off")
+    axes[1].axis("off")
+    axes[2].axis("off")
+
+    axes[0].set_title('(a) GWR: Med_HP_2021 (BW: ' + str(bandwidth) + '), all coeffs', fontsize=12)
+    axes[1].set_title('(b) GWR: Med_HP_2021 (BW: ' + str(bandwidth) + '), significant coeffs', fontsize=12)
+    axes[2].set_title('(c) GWR: Med_HP_2021 (BW: ' + str(bandwidth) + '), significant coeffs and corr. p-values',
+                      fontsize=12)
     plt.show()
 '''
+# GWR analysis 2021 (METHOD 2)
+# See here: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
+
