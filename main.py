@@ -136,9 +136,9 @@ if SD_flag == True:
     calculate_corr_matrix_2_var(analysis_df, supply_var, demand_var)
 
 ########################################################################################################################
-# 2021 analysis
+# 2021 vs 2024 analysis
 
-analysis_2021 = analysis_df[["LSOA21CD", "LSOA21NM", "EVCI2021", "y2021Q4"]]
+analysis_21_24 = analysis_df[["LSOA21CD", "LSOA21NM", "EVCI2021", "y2021Q4", "EVCI2024", "y2024Q2"]]
 
 # London LSOA codes
 Londn_LSOAs = pd.read_csv(inputs["London_LSOAs"])
@@ -221,41 +221,132 @@ ASG_London = ASG_London[["LSOA21CD", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE"]]
 HH_deprivation = HH_deprivation[["LSOA21CD", "HH_number", "D0", "D1", "D2", "D3", "D4"]]
 
 # Merge the dataframes
-analysis_2021 = analysis_2021.merge(Median_house_prices_London, on="LSOA21CD", how="outer")
-analysis_2021 = analysis_2021.merge(ASG_London, on="LSOA21CD", how="outer")
-analysis_2021 = analysis_2021.merge(HH_deprivation, on="LSOA21CD", how="outer")
+analysis_21_24 = analysis_21_24.merge(Median_house_prices_London, on="LSOA21CD", how="outer")
+analysis_21_24 = analysis_21_24.merge(ASG_London, on="LSOA21CD", how="outer")
+analysis_21_24 = analysis_21_24.merge(HH_deprivation, on="LSOA21CD", how="outer")
 
-# Create an accessibility column by deviding the n of chargers by the number of EV
-analysis_2021["accessibility"] = analysis_2021["EVCI2021"] / analysis_2021["y2021Q4"]
+# Add population density
+Population_density_GB = pd.read_csv(inputs["Population_density_GB"])
+Population_density_London = Population_density_GB[Population_density_GB["LSOA21CD"].isin(London_LSOA_codes)]
+Population_density_London = Population_density_London[["LSOA21CD", "People per Sq Km"]]
+Population_density_London.rename(columns={"People per Sq Km": "Pop_density"}, inplace=True)
+analysis_21_24 = analysis_21_24.merge(Population_density_London, on="LSOA21CD", how="outer")
 
-# Remove LSOA codes and names, and HH number
-#analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
-#analysis_2021.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
-analysis_2021.drop(columns=["LSOA21NM", "HH_number"], inplace=True)
+# Add number of cars per Household (HH)
+Vehicle_ownership_London_2021 = pd.read_csv(inputs["Vehicle_ownership_London_2021"])
+Vehicle_ownership_London_2021.rename(columns={"Lower layer Super Output Areas Code": "LSOA21CD",
+                                              "Lower layer Super Output Areas": "LSOA21NM",
+                                              "Car or van availability (5 categories) Code": "Car_aval_code",
+                                              "Car or van availability (5 categories)": "Car_aval_category",
+                                              "Observation": "n_of_HH"}, inplace=True)
+
+# Restructure the dataframe to have one LSOA in every row, and creating new columns for each car availability category
+Vehicle_ownership_London_2021 = Vehicle_ownership_London_2021.pivot(index="LSOA21CD", columns="Car_aval_category", values="n_of_HH")
+Vehicle_ownership_London_2021.reset_index(inplace=True)
+Vehicle_ownership_London_2021.columns.name = None
+Vehicle_ownership_London_2021.rename(columns={"No cars or vans in household": "HH_cars_0",
+                                              "1 car or van in household": "HH_cars_1",
+                                              "2 cars or vans in household": "HH_cars_2",
+                                              "3 or more cars or vans in household": "HH_cars_3+"}, inplace=True)
+Vehicle_ownership_London_2021 = Vehicle_ownership_London_2021[['LSOA21CD', 'HH_cars_0', 'HH_cars_1', 'HH_cars_2', 'HH_cars_3+']]
+
+# Merge the vehicle ownership data
+analysis_21_24 = analysis_21_24.merge(Vehicle_ownership_London_2021, on="LSOA21CD", how="outer")
+
+# Add house tenure
+House_tenure_London_2021 = pd.read_csv(inputs["House_tenure_London_2021"])
+# Rename columns
+House_tenure_London_2021.rename(columns={"Lower layer Super Output Areas Code": "LSOA21CD",
+                                              "Lower layer Super Output Areas": "LSOA21NM",
+                                              "Tenure of household (9 categories) Code": "HH_tenure_code",
+                                              "Tenure of household (9 categories)": "HH_tenure_category",
+                                              "Observation": "n_of_HH"}, inplace=True)
+
+# Restructure the dataframe to have one LSOA in every row, and creating new columns for each tenure of household category
+House_tenure_London_2021 = House_tenure_London_2021.pivot(index="LSOA21CD", columns="HH_tenure_category", values="n_of_HH")
+House_tenure_London_2021.reset_index(inplace=True)
+House_tenure_London_2021.columns.name = None
+# Rename columns
+House_tenure_London_2021.rename(columns={"Owned: Owns outright": "HHT_owned_outright",
+                                         "Owned: Owns with a mortgage or loan": "HHT_owned_mortgage",
+                                         "Shared ownership: Shared ownership": "HHT_shared_ownership",
+                                         "Private rented: Other private rented": "HHT_rented_other",
+                                         "Private rented: Private landlord or letting agency": "HHT_rented_private",
+                                         "Social rented: Other social rented": "HHT_rented_social",
+                                         "Lives rent free": "HHT_rent_free",
+                                         "Social rented: Rents from council or Local Authority": "HHT_rented_social"}, inplace=True)
+
+House_tenure_London_2021 = House_tenure_London_2021[["LSOA21CD", "HHT_rent_free", "HHT_owned_outright",
+                                                     "HHT_owned_mortgage", "HHT_rented_other", "HHT_rented_private",
+                                                     "HHT_shared_ownership", "HHT_rented_social", "HHT_rented_social"]]
+
+# Merge the house tenure data
+analysis_21_24 = analysis_21_24.merge(House_tenure_London_2021, on="LSOA21CD", how="outer")
+
+# Add accommodation type
+Accommodation_type_London_2021 = pd.read_csv(inputs["Accommodation_type_London_2021"])
+# Rename columns
+Accommodation_type_London_2021.rename(columns={"Lower layer Super Output Areas Code": "LSOA21CD",
+                                                "Lower layer Super Output Areas": "LSOA21NM",
+                                                "Accommodation type (8 categories) Code": "Acc_type_code",
+                                                "Accommodation type (8 categories)": "Acc_type_category",
+                                                "Observation": "n_of_HH"}, inplace=True)
+# Restructure the dataframe to have one LSOA in every row, and creating new columns for each accommodation type category
+Accommodation_type_London_2021 = Accommodation_type_London_2021.pivot(index="LSOA21CD", columns="Acc_type_category", values="n_of_HH")
+Accommodation_type_London_2021.reset_index(inplace=True)
+Accommodation_type_London_2021.columns.name = None
+# Rename columns
+Accommodation_type_London_2021.rename(columns={"Detached": "Acc_detached",
+                                               "A caravan or other mobile or temporary structure": "Acc_caravan",
+                                               "In a commercial building, for example, in an office building, hotel or over a shop": "Acc_commercial",
+                                               "In a purpose-built block of flats or tenement": "Acc_flat",
+                                               "Part of a converted or shared house, including bedsits": "Acc_converted_or_shared",
+                                               "Part of another converted building, for example, former school, church or warehouse": "Acc_converted_other",
+                                               "Semi-detached": "Acc_semidetached",
+                                               "Terraced": "Acc_terraced"}, inplace=True)
+
+# Merge the accommodation type data
+analysis_21_24 = analysis_21_24.merge(Accommodation_type_London_2021, on="LSOA21CD", how="outer")
+
+# Create an accessibility column by dividing the n of chargers by the number of EV
+analysis_21_24["accessibility_21"] = analysis_21_24["EVCI2021"] / analysis_21_24["y2021Q4"]
+analysis_21_24["accessibility_24"] = analysis_21_24["EVCI2024"] / analysis_21_24["y2024Q2"]
+analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] / analysis_21_24["accessibility_21"]
+
+# Remove columns
+#analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
+#analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
+#analysis_21_24.drop(columns=["LSOA21NM", "HH_number"], inplace=True)
 
 # Correlation matrix
 CSCA_2021_flag = False
 if CSCA_2021_flag == True:
-    plt_and_save_corr_matrix(analysis_2021, outputs["correlation_matrix_2021"])
+    plt_and_save_corr_matrix(analysis_21_24, outputs["correlation_matrix_2021"])
 
-# OLS analysis 2021
+# OLS analysis
 OLS_2021_flag = False
 if OLS_2021_flag == True:
 
-    # OLS for SUPPLY
+    # TODO: take the Log of house prices (and other big numbers to avoid coefficients with many zeros)
+
+    # OLS for SUPPLY 2021
     dependent_variable = "EVCI2021"
     independent_variables = ["y2021Q4", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
-    OLS_analysis(analysis_2021, dependent_variable, independent_variables)
+    OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
 
-    # OLS for DEMAND
+    # OLS for DEMAND 2021
     dependent_variable = "y2021Q4"
     independent_variables = ["EVCI2021", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
-    OLS_analysis(analysis_2021, dependent_variable, independent_variables)
+    OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
 
-    # OLS for ACCESSIBILITY
-    dependent_variable = "accessibility"
+    # OLS for ACCESSIBILITY 2021
+    dependent_variable = "accessibility_21"
     independent_variables = ["EVCI2021", "Med_HP_2021", "ASG_AB", "ASG_C1", "ASG_C2", "ASG_DE", "D0", "D1", "D2", "D3", "D4"]
-    OLS_analysis(analysis_2021, dependent_variable, independent_variables)
+    OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+
+    # OLS for ACCESSIBILITY 2024
+
+    # OLS for ACCESSIBILITY DIFFERENCE 2024-2021
 
 # Geographically Weighted Regression (GWR) analysis 2021
 '''
@@ -270,19 +361,19 @@ if GWR_flag_METHOD1 == True:
     # Only keep the relevant columns
     London_LSOA_centroids = London_LSOA_centroids[["LSOA21CD", "x", "y"]]
 
-    # Merge the centroids with the analysis_2021 dataframe
-    analysis_2021 = analysis_2021.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
-    #analysis_2021.drop(columns=["LSOA21CD"], inplace=True)
+    # Merge the centroids with the analysis_21_24 dataframe
+    analysis_21_24 = analysis_21_24.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
+    #analysis_21_24.drop(columns=["LSOA21CD"], inplace=True)
 
     # Remove NaNs
-    analysis_2021 = analysis_2021.dropna()
+    analysis_21_24 = analysis_21_24.dropna()
 
     # Step 1: Prepare spatial coordinates and data
-    u = analysis_2021["x"]
-    v = analysis_2021["y"]
+    u = analysis_21_24["x"]
+    v = analysis_21_24["y"]
     coords = list(zip(u,v))  # Spatial coordinates
-    X = analysis_2021[["Med_HP_2021"]].values  # Independent variables
-    Y = analysis_2021["accessibility"].values.reshape(-1, 1)  # Dependent variable reshaped for GWR
+    X = analysis_21_24[["Med_HP_2021"]].values  # Independent variables
+    Y = analysis_21_24["accessibility"].values.reshape(-1, 1)  # Dependent variable reshaped for GWR
 
     # Step 2: Select the optimal bandwidth
     selector = Sel_BW(coords, Y, X)
@@ -301,23 +392,23 @@ if GWR_flag_METHOD1 == True:
 
 
     London_LSOA_polygons = gpd.read_file(inputs["London_LSOA_polygons"])
-    # Now use the polygons geometry for the analysis_2021 dataframe
-    analysis_2021 = analysis_2021.merge(London_LSOA_polygons, on="LSOA21CD", how="outer")
-    # Now turn the analysis_2021 dataframe into a geodataframe
-    analysis_2021 = gpd.GeoDataFrame(analysis_2021)
+    # Now use the polygons geometry for the analysis_21_24 dataframe
+    analysis_21_24 = analysis_21_24.merge(London_LSOA_polygons, on="LSOA21CD", how="outer")
+    # Now turn the analysis_21_24 dataframe into a geodataframe
+    analysis_21_24 = gpd.GeoDataFrame(analysis_21_24)
 
     # Drop NaNs
-    analysis_2021 = analysis_2021.dropna()
+    analysis_21_24 = analysis_21_24.dropna()
 
     # Link to GWR tutorial (follow for visualisation)
     # https://deepnote.com/app/carlos-mendez/PYTHON-GWR-and-MGWR-71dd8ba9-a3ea-4d28-9b20-41cc8a282b7a
 
-    analysis_2021['gwr_R2'] = gwr_results.localR2
+    analysis_21_24['gwr_R2'] = gwr_results.localR2
 
     # Step 6: Visualize local R^2
     
     fig, ax = plt.subplots(figsize=(6, 6))
-    analysis_2021.plot(column='gwr_R2', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
+    analysis_21_24.plot(column='gwr_R2', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
              legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=ax)
              #legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=ax)
     ax.set_title('Local R2', fontsize=12)
@@ -328,30 +419,30 @@ if GWR_flag_METHOD1 == True:
 
     # Step 7: Visualize local coefficients
     # Add coefficients to the dataframe
-    analysis_2021['gwr_intercept'] = gwr_results.params[:, 0]
-    analysis_2021['gwr_Med_HP_2021'] = gwr_results.params[:, 1]
+    analysis_21_24['gwr_intercept'] = gwr_results.params[:, 0]
+    analysis_21_24['gwr_Med_HP_2021'] = gwr_results.params[:, 1]
 
     # Filter/correct t-stats
-    analysis_2021_filtered_t = gwr_results.filter_tvals(alpha=0.05)
-    analysis_2021_filtered_t_df = pd.DataFrame(analysis_2021_filtered_t)
+    analysis_21_24_filtered_t = gwr_results.filter_tvals(alpha=0.05)
+    analysis_21_24_filtered_t_df = pd.DataFrame(aanalysis_21_24_filtered_t)
 
     # Filter t-values: corrected alpha due to multiple testing
-    analysis_2021_filtered_tc = gwr_results.filter_tvals()
-    analysis_2021_filtered_tc_df = pd.DataFrame(analysis_2021_filtered_tc)
+    analysis_21_24_filtered_tc = gwr_results.filter_tvals()
+    analysis_21_24_filtered_tc_df = pd.DataFrame(analysis_21_24_filtered_tc)
 
     # Map coefficients
     fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
 
-    analysis_2021.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
+    analysis_21_24.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
              legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[0])
 
-    analysis_2021.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
+    analysis_21_24.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
              legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[1])
-    analysis_2021[analysis_2021_filtered_t_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[1])
+    analysis_21_24[analysis_21_24_filtered_t_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[1])
 
-    analysis_2021.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
+    analysis_21_24.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
              legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[2])
-    analysis_2021[analysis_2021_filtered_tc_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[2])
+    analysis_21_24[analysis_21_241_filtered_tc_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[2])
 
     plt.tight_layout()
 

@@ -11,6 +11,10 @@ inputs["London_LSOA_centroids"] = "./input-data/Geography/London_LSOA_centroids.
 inputs["London_LSOA_polygons"] = "./input-data/Geography/London_LSOA_polygons.shp"
 inputs["HH_deprivation_2021"] = "./input-data/Deprivation/HH_deprivation_London_LSOA_2021.csv"
 inputs["ASG_GB"] = "./input-data/Approximate_social_grade/Approximated_social_grade_LSOA_2021_GB.csv"
+inputs["Population_density_GB"] = "./input-data/Population/2021_LSOA_Population_GB.csv"
+inputs["Vehicle_ownership_London_2021"] = "./input-data/Vehicle_ownership/Vehicles_HH_2021_London.csv"
+inputs["House_tenure_London_2021"] = "./input-data/House_tenure/House_tenure_2021_London.csv"
+inputs["Accommodation_type_London_2021"] = "./input-data/Accommodation_type/Accommodation_type_2021_London.csv"
 
 generated = {}
 generated["EVCI-London"] = "./generated-files/EVCI-London.csv"
