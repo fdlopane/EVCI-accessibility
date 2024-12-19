@@ -25,5 +25,13 @@ generated["Median_house_prices_London"] = "./generated-files/Median_price_reside
 generated["ASG_London"] = "./generated-files/Approximated_social_grade_LSOA_2021_London.csv"
 
 outputs = {}
-outputs["correlation_matrix_2021"] = "./output-data/correlation_matrix_2021.csv"
+outputs["correlation_matrix_2021_2024"] = "./output-data/correlation_matrix_2021_2024.csv"
+outputs["OLS_supply_2021"] = "./output-data/OLS_supply_2021.csv"
+outputs["OLS_demand_2021"] = "./output-data/OLS_demand_2021.csv"
+outputs["OLS_accessibility_2021"] = "./output-data/OLS_accessibility_2021.csv"
+outputs["OLS_supply_2024"] = "./output-data/OLS_supply_2024.csv"
+outputs["OLS_demand_2024"] = "./output-data/OLS_demand_2024.csv"
+outputs["OLS_accessibility_2024"] = "./output-data/OLS_accessibility_2024.csv"
+outputs["OLS_diff_accessibility_21_24"] = "./output-data/OLS_diff_accessibility_21_24.csv"
+
 

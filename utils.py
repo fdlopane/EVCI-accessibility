@@ -5,6 +5,7 @@ Collection of functions used in the EVCI accessibility analysis
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
 ########################################################################################################################
@@ -140,16 +141,38 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
     analysis_2021 = analysis_df.dropna()
 
     print()
-    print(
-        "############################################################################################################")
+    print("###########################################################################################################")
     print("OLS analysis for: ", dependent_variable)
     # Define the list of variables:
     for i in independent_variables:
         X = analysis_2021[[i]]
         Y = analysis_2021[dependent_variable]
         X = sm.add_constant(X)
+        model = sm.OLS(Y, X.astype(float)).fit()
+        #print(model.summary())
+
+    # Save outputs of multiple OLS models into a single table
+    # Create a list of models
+    models = []
+    for i in independent_variables:
+        X = analysis_2021[[i]]
+        Y = analysis_2021[dependent_variable]
+        X = sm.add_constant(X)
         model = sm.OLS(Y, X).fit()
-        print(model.summary())
+        models.append(model)
+
+    # Create a summary table including the coefficients, standard errors, t-values, p-values, and confidence intervals
+    summary_table = pd.DataFrame(
+        columns=['Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value', 'CI 2.5%', 'CI 97.5%'])
+    for i, model in enumerate(models):
+        summary_table.loc[i] = [independent_variables[i], model.params[1], model.bse[1], model.tvalues[1],
+                                model.pvalues[1], model.conf_int()[0][1], model.conf_int()[1][1]]
+
+    print(summary_table)
+    print("###########################################################################################################")
+    print()
+    return summary_table
+
 
 ########################################################################################################################
 #
