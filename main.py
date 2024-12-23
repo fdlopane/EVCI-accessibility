@@ -320,7 +320,7 @@ analysis_21_24 = analysis_21_24.merge(Accommodation_type_London_2021, on="LSOA21
 # Create an accessibility column by dividing the n of chargers by the number of EV
 analysis_21_24["accessibility_21"] = analysis_21_24["EVCI2021"] / analysis_21_24["y2021Q4"]
 analysis_21_24["accessibility_24"] = analysis_21_24["EVCI2024"] / analysis_21_24["y2024Q2"]
-analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] / analysis_21_24["accessibility_21"]
+analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] - analysis_21_24["accessibility_21"]
 
 # Remove columns
 #analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
@@ -332,15 +332,13 @@ CSCA_2021_2024_flag = False
 if CSCA_2021_2024_flag == True:
     plt_and_save_corr_matrix(analysis_21_24, outputs["correlation_matrix_2021_2024"])
 
-# print data type of each column
-print(analysis_21_24.dtypes)
-print(analysis_21_24.columns)
-
 # OLS analysis
 OLS_2021_flag = True
 if OLS_2021_flag == True:
 
-    # TODO: take the Log of house prices (and other big numbers to avoid coefficients with many zeros)
+    # take the Log of house prices (and other big numbers to avoid coefficients with many zeros)
+    analysis_21_24["Med_HP_2021"] = np.log(analysis_21_24["Med_HP_2021"])
+    analysis_21_24["Med_HP_2023"] = np.log(analysis_21_24["Med_HP_2023"])
 
     # OLS for SUPPLY 2021
     dependent_variable = "EVCI2021"

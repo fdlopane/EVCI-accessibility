@@ -162,17 +162,25 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
         models.append(model)
 
     # Create a summary table including the coefficients, standard errors, t-values, p-values, and confidence intervals
+
     summary_table = pd.DataFrame(
         columns=['Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value', 'CI 2.5%', 'CI 97.5%'])
     for i, model in enumerate(models):
         summary_table.loc[i] = [independent_variables[i], model.params[1], model.bse[1], model.tvalues[1],
                                 model.pvalues[1], model.conf_int()[0][1], model.conf_int()[1][1]]
 
-    print(summary_table)
-    print("###########################################################################################################")
-    print()
+    # Add stars to the table depending on the p-value
+    summary_table = summary_table.copy()
+    summary_table['Significance'] = ''
+    summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
+    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
+    summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
+
+
+    #print(summary_table)
+    #print("###########################################################################################################")
+    #print()
     return summary_table
 
 
 ########################################################################################################################
-#
