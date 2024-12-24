@@ -144,38 +144,38 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
     print("###########################################################################################################")
     print("OLS analysis for: ", dependent_variable)
     # Define the list of variables:
+    models = []
     for i in independent_variables:
-        X = analysis_2021[[i]]
+        X = analysis_2021[i]
         Y = analysis_2021[dependent_variable]
         X = sm.add_constant(X)
         model = sm.OLS(Y, X.astype(float)).fit()
+        models.append(model)
         #print(model.summary())
 
-    # Save outputs of multiple OLS models into a single table
-    # Create a list of models
-    models = []
-    for i in independent_variables:
-        X = analysis_2021[[i]]
-        Y = analysis_2021[dependent_variable]
-        X = sm.add_constant(X)
-        model = sm.OLS(Y, X).fit()
-        models.append(model)
-
     # Create a summary table including the coefficients, standard errors, t-values, p-values, and confidence intervals
-
+    # Different models have different number of independent variables used as control variables
+    # So, we need to create the summary table dynamically including the independent variables used in each model
     summary_table = pd.DataFrame(
-        columns=['Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value', 'CI 2.5%', 'CI 97.5%'])
+        # include the model in the column names
+        columns=['Model', 'Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value', 'Significance', 'CI 2.5%', 'CI 97.5%'])
     for i, model in enumerate(models):
-        summary_table.loc[i] = [independent_variables[i], model.params[1], model.bse[1], model.tvalues[1],
-                                model.pvalues[1], model.conf_int()[0][1], model.conf_int()[1][1]]
+        for j in independent_variables:
+            # TODO: use concat to add the rows to the summary table
+            summary_table = summary_table.append(
+                {'Model': i + 1, 'Variable': j, 'Coefficient': model.params[j], 'Standard Error': model.bse[j],
+                 't-Value': model.tvalues[j], 'p-Value': model.pvalues[j], 'CI 2.5%': model.conf_int()[0][j],
+                 'CI 97.5%': model.conf_int()[1][j]}, ignore_index=True)
 
-    # Add stars to the table depending on the p-value
-    summary_table = summary_table.copy()
-    summary_table['Significance'] = ''
+    '''
+        summary_table.loc[i] = [i+1, independent_variables[i], model.params[1], model.bse[1], model.tvalues[1],
+                                model.pvalues[1], '', model.conf_int()[0][1], model.conf_int()[1][1]]
+    '''
+
+    # Fill the significance column
     summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
     summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
     summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
-
 
     #print(summary_table)
     #print("###########################################################################################################")
