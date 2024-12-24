@@ -146,6 +146,7 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
     # Define the list of variables:
     models = []
     for i in independent_variables:
+        #print("Independent variable: ", i)
         X = analysis_2021[i]
         Y = analysis_2021[dependent_variable]
         X = sm.add_constant(X)
@@ -153,12 +154,58 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
         models.append(model)
         #print(model.summary())
 
-    # Create a summary table including the coefficients, standard errors, t-values, p-values, and confidence intervals
-    # Different models have different number of independent variables used as control variables
-    # So, we need to create the summary table dynamically including the independent variables used in each model
-    summary_table = pd.DataFrame(
-        # include the model in the column names
-        columns=['Model', 'Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value', 'Significance', 'CI 2.5%', 'CI 97.5%'])
+    # Create a summary table for each model in models
+    summary_table = pd.DataFrame(columns=['Model', 'Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value',
+                                          'CI 2.5%', 'CI 97.5%'])
+
+    # Collect all rows in a list
+    rows_to_add = []
+
+    # Iterate through models and their independent variables
+    for i, model in enumerate(models):
+        for var in model.params.index:  # Get variable names
+            if var == 'const':  # Skip the constant term if present
+                continue
+
+            # Skip variables not found in pvalues or conf_int
+            if var not in model.pvalues or var not in model.conf_int().index:
+                print(f"Warning: Variable '{var}' not found in model.pvalues or model.conf_int()")
+                continue
+
+            # Extract confidence intervals
+            ci_lower, ci_upper = model.conf_int().loc[var]
+
+            # Create a row dictionary
+            row = {
+                'Model': i + 1,
+                'Variable': var,
+                'Coefficient': model.params[var],
+                'Standard Error': model.bse[var],
+                't-Value': model.tvalues[var],
+                'p-Value': model.pvalues[var],
+                'CI 2.5%': ci_lower,
+                'CI 97.5%': ci_upper
+            }
+            rows_to_add.append(row)
+
+    # Convert the list of rows into a DataFrame and concatenate with the summary table
+    summary_table = pd.concat([summary_table, pd.DataFrame(rows_to_add)], ignore_index=True)
+
+    # Sort the summary table by Model and Variable
+    summary_table.sort_values(by=['Model', 'Variable'], inplace=True)
+
+    # Add a column for significance
+    summary_table['Significance'] = ''
+    summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
+    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
+    summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
+    # Move the significance column straight after the p-Value column
+    cols = summary_table.columns.tolist()
+    cols = cols[:6] + cols[-1:] + cols[6:-1]
+    summary_table = summary_table[cols]
+
+
+    '''
     for i, model in enumerate(models):
         for j in independent_variables:
             # TODO: use concat to add the rows to the summary table
@@ -166,16 +213,19 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
                 {'Model': i + 1, 'Variable': j, 'Coefficient': model.params[j], 'Standard Error': model.bse[j],
                  't-Value': model.tvalues[j], 'p-Value': model.pvalues[j], 'CI 2.5%': model.conf_int()[0][j],
                  'CI 97.5%': model.conf_int()[1][j]}, ignore_index=True)
+    '''
 
     '''
         summary_table.loc[i] = [i+1, independent_variables[i], model.params[1], model.bse[1], model.tvalues[1],
                                 model.pvalues[1], '', model.conf_int()[0][1], model.conf_int()[1][1]]
     '''
 
+
+
     # Fill the significance column
-    summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
-    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
-    summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
+    #summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
+    #summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
+    #summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
 
     #print(summary_table)
     #print("###########################################################################################################")
