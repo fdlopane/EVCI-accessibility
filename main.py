@@ -340,6 +340,7 @@ if OLS_2021_2024_flag == True:
     analysis_21_24["Med_HP_2021"] = np.log(analysis_21_24["Med_HP_2021"])
     analysis_21_24["Med_HP_2023"] = np.log(analysis_21_24["Med_HP_2023"])
 
+    # __________________________________________________________________________________________________________________
     # OLS for SUPPLY 2021
     dependent_variable = "EVCI2021"
     independent_variables = [["y2021Q4"],                 # EV licensing 2021
@@ -377,12 +378,6 @@ if OLS_2021_2024_flag == True:
     # normalise the variables with the Min-Max scaling
     for i in independent_variables:
         analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (analysis_21_24[i].max() - analysis_21_24[i].min())
-
-
-    # filter only the columns starting with HHT
-    HHT_columns = [col for col in analysis_21_24.columns if col.startswith('HHT')]
-    HHT = analysis_21_24[HHT_columns]
-    print(HHT.columns)
 
     supply_summary_table_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
     # save the summary table
