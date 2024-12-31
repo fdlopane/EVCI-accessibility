@@ -334,52 +334,137 @@ if CSCA_2021_2024_flag == True:
 
 # OLS analysis
 OLS_2021_2024_flag = True
+# Normalisation options:
+normalise_dependent_variables = True
+normalise_independent_variables = True
+
 if OLS_2021_2024_flag == True:
+    # print if the dependent and independent variables are normalised according to the options
+    print("-------------------------------------------------------------------")
+    print("Normalise dependent variables: ", normalise_dependent_variables)
+    print("Normalise independent variables: ", normalise_independent_variables)
+    print("-------------------------------------------------------------------")
 
     # take the Log of house prices (and other big numbers to avoid coefficients with many zeros)
+    print()
+    print("Log-transforming the median house prices...")
+    print()
     analysis_21_24["Med_HP_2021"] = np.log(analysis_21_24["Med_HP_2021"])
     analysis_21_24["Med_HP_2023"] = np.log(analysis_21_24["Med_HP_2023"])
+
+    # normalise the variables with the Min-Max scaling
+    # categorise the variables in dependent and independent variables and save the categorisation into two lists:
+    cat_dep_variables = ["EVCI2021",         # EVCI 2021
+                         "y2021Q4",          # EV licensing 2021
+                         "EVCI2024",         # EVCI 2024
+                         "y2024Q2",          # EV licensing 2024
+                         "accessibility_21", # Accessibility 2021
+                         "accessibility_24", # Accessibility 2024
+                         "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
+
+    cat_indep_variables = ["Med_HP_2021",             # Median house prices 2021 (December)
+                           "ASG_AB",                  # Approx social grade (higher and intermediate occ.)
+                           "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
+                           "ASG_C2",                  # Approx social grade (Skilled manual occ.)
+                           "ASG_DE",                  # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
+                           "D0",                      # Deprivation index 0 (no dimensions)
+                           "D1",                      # Deprivation index 1 (1 dimension)
+                           "D2",                      # Deprivation index 2 (2 dimensions)
+                           "D3",                      # Deprivation index 3 (3 dimensions)
+                           "D4",                      # Deprivation index 4 (4 dimensions)
+                           "Pop_density",             # Population density
+                           "HH_cars_0",               # N of HH with 0 cars
+                           "HH_cars_1",               # N of HH with 1 car
+                           "HH_cars_2",               # N of HH with 2 cars
+                           "HH_cars_3+",              # N of HH with 3+ cars
+                           "HHT_rent_free",           # N of HH living rent-free
+                           "HHT_owned_outright",      # N of HH owning outright
+                           "HHT_owned_mortgage",      # N of HH owning with mortgage
+                           "HHT_rented_other",        # N of HH renting from other private landlords
+                           "HHT_rented_private",      # N of HH renting from private landlords
+                           "HHT_shared_ownership",    # N of HH in shared ownership
+                           "HHT_rented_social",       # N of HH renting from social landlords
+                           "Acc_detached",            # N of HH living in detached houses
+                           "Acc_caravan",             # N of HH living in caravans
+                           "Acc_commercial",          # N of HH living in commercial buildings
+                           "Acc_flat",                # N of HH living in flats
+                           "Acc_converted_or_shared", # N of HH living in converted or shared houses
+                           "Acc_converted_other",     # N of HH living in other converted buildings
+                           "Acc_semidetached",        # N of HH living in semi-detached houses
+                           "Acc_terraced"]            # N of HH living in terraced houses
+
+    if normalise_dependent_variables == True:
+        for i in cat_dep_variables:
+            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
+                    analysis_21_24[i].max() - analysis_21_24[i].min())
+
+    if normalise_independent_variables == True:
+        for i in cat_indep_variables:
+            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
+                    analysis_21_24[i].max() - analysis_21_24[i].min())
+
+    def normalise_and_run_OLS(var, normalise_dependent_variables, normalise_independent_variables):
+        # if dependent variables are not normalised, I have to normalise them here if they are included in the independent variables
+        if normalise_dependent_variables == False:
+            if normalise_independent_variables == True:
+                # copy the analysis dataframe into a new dataframe for the supply_21 analysis
+                analysis_21_24_n = analysis_21_24.copy()
+                # for each variable in var, normalise it:
+                for v in var:
+                    analysis_21_24_n[v] = (analysis_21_24_n[v] - analysis_21_24_n[v].min()) / (
+                            analysis_21_24_n[v].max() - analysis_21_24_n[v].min())
+                # run the OLS analysis with the analysis_21_24_supply_21 dataframe
+                supply_summary_table = OLS_analysis(analysis_21_24_n, dependent_variable, independent_variables)
+                return supply_summary_table
+            else:
+                supply_summary_table = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+                return supply_summary_table
+        else:
+            if normalise_independent_variables == True:
+                supply_summary_table = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+                return supply_summary_table
+            else:
+                # throw an exception as some dependent variables are normalised and they are included in the non-normalised independent variables
+                raise Exception("Dependent variables are normalised, but some of them are included in the non-normalised independent variables."
+                                "Please change the normalisation options.")
 
     # __________________________________________________________________________________________________________________
     # OLS for SUPPLY 2021
     dependent_variable = "EVCI2021"
-    independent_variables = [["y2021Q4"],                 # EV licensing 2021
-                             ["Med_HP_2021"],             # Median house prices 2021 (December)
-                             ["ASG_AB",                  # Approx social grade (higher and intermediate occ.)
+    independent_variables = [["y2021Q4"],               # EV licensing 2021
+                             ["Med_HP_2021"],           # Median house prices 2021 (December)
+                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
                              "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
                              "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                  # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                      # Deprivation index 0 (no dimensions)
+                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
+                             ["D0",                     # Deprivation index 0 (no dimensions)
                              "D1",                      # Deprivation index 1 (1 dimension)
                              "D2",                      # Deprivation index 2 (2 dimensions)
                              "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                      # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],             # Population density
-                             ["HH_cars_0",               # N of HH with 0 cars
+                             "D4"],                     # Deprivation index 4 (4 dimensions)
+                             ["Pop_density"],           # Population density
+                             ["HH_cars_0",              # N of HH with 0 cars
                              "HH_cars_1",               # N of HH with 1 car
                              "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],              # N of HH with 3+ cars
-                             ["HHT_rent_free",           # N of HH living rent-free
+                             "HH_cars_3+"],             # N of HH with 3+ cars
+                             ["HHT_rent_free",          # N of HH living rent-free
                              "HHT_owned_outright",      # N of HH owning outright
                              "HHT_owned_mortgage",      # N of HH owning with mortgage
                              "HHT_rented_other",        # N of HH renting from other private landlords
                              "HHT_rented_private",      # N of HH renting from private landlords
                              "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],       # N of HH renting from social landlords
-                             ["Acc_detached",            # N of HH living in detached houses
+                             "HHT_rented_social"],      # N of HH renting from social landlords
+                             ["Acc_detached",           # N of HH living in detached houses
                              "Acc_caravan",             # N of HH living in caravans
                              "Acc_commercial",          # N of HH living in commercial buildings
                              "Acc_flat",                # N of HH living in flats
                              "Acc_converted_or_shared", # N of HH living in converted or shared houses
                              "Acc_converted_other",     # N of HH living in other converted buildings
                              "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]            # N of HH living in terraced houses
+                             "Acc_terraced"]]           # N of HH living in terraced houses
 
-    # normalise the variables with the Min-Max scaling
-    for i in independent_variables:
-        analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (analysis_21_24[i].max() - analysis_21_24[i].min())
 
-    supply_summary_table_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+    supply_summary_table_21 = normalise_and_run_OLS(["y2021Q4"], normalise_dependent_variables, normalise_independent_variables)
     # save the summary table
     supply_summary_table_21.to_csv(outputs["OLS_supply_2021"], index=False)
 
@@ -418,7 +503,7 @@ if OLS_2021_2024_flag == True:
                              "Acc_semidetached",        # N of HH living in semi-detached houses
                              "Acc_terraced"]]           # N of HH living in terraced houses
 
-    demand_summary_table_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+    demand_summary_table_21 = normalise_and_run_OLS(["EVCI2021"], normalise_dependent_variables, normalise_independent_variables)
     # save the summary table
     demand_summary_table_21.to_csv(outputs["OLS_demand_2021"], index=False)
 
@@ -495,7 +580,7 @@ if OLS_2021_2024_flag == True:
                              "Acc_semidetached",        # N of HH living in semi-detached houses
                              "Acc_terraced"]]           # N of HH living in terraced houses
 
-    supply_summary_table_24 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+    supply_summary_table_24 = normalise_and_run_OLS(["y2024Q2"], normalise_dependent_variables, normalise_independent_variables)
 
     # save the summary table
     supply_summary_table_24.to_csv(outputs["OLS_supply_2024"], index=False)
@@ -535,7 +620,7 @@ if OLS_2021_2024_flag == True:
                              "Acc_semidetached",        # N of HH living in semi-detached houses
                              "Acc_terraced"]]           # N of HH living in terraced houses
 
-    demand_summary_table_24 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+    demand_summary_table_24 = normalise_and_run_OLS(["EVCI2024"], normalise_dependent_variables, normalise_independent_variables)
 
     # save the summary table
     demand_summary_table_24.to_csv(outputs["OLS_demand_2024"], index=False)
