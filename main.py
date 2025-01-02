@@ -20,12 +20,8 @@ from mgwr.gwr import GWR
 from mgwr.sel_bw import Sel_BW
 from scipy.spatial import distance
 from utils import *
+from spglm.family import Gaussian
 
-import pysal as ps
-from pysal.contrib import gwr
-from pysal.contrib.gwr.gwr import GWR
-from pysal.contrib.gwr.sel_bw import Sel_BW
-from pysal.contrib.glm.family import Gaussian
 
 
 # Create the EVCI-year column in EVCI data set
@@ -711,120 +707,27 @@ if OLS_2021_2024_flag == True:
     # save the summary table
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
 
-'''
-GWR_flag_METHOD1 = False
-if GWR_flag_METHOD1 == True:
-    # import the London centroids shapefile with geopandas
-    London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
-    # Extract the coordinates of the centroids
-    London_LSOA_centroids["x"] = London_LSOA_centroids.centroid.x
-    London_LSOA_centroids["y"] = London_LSOA_centroids.centroid.y
 
-    # Only keep the relevant columns
-    London_LSOA_centroids = London_LSOA_centroids[["LSOA21CD", "x", "y"]]
-
-    # Merge the centroids with the analysis_21_24 dataframe
-    analysis_21_24 = analysis_21_24.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
-    #analysis_21_24.drop(columns=["LSOA21CD"], inplace=True)
-
-    # Remove NaNs
-    analysis_21_24 = analysis_21_24.dropna()
-
-    # Step 1: Prepare spatial coordinates and data
-    u = analysis_21_24["x"]
-    v = analysis_21_24["y"]
-    coords = list(zip(u,v))  # Spatial coordinates
-    X = analysis_21_24[["Med_HP_2021"]].values  # Independent variables
-    Y = analysis_21_24["accessibility"].values.reshape(-1, 1)  # Dependent variable reshaped for GWR
-
-    # Step 2: Select the optimal bandwidth
-    selector = Sel_BW(coords, Y, X)
-    bandwidth = selector.search()
-    print(f"Optimal Bandwidth: {bandwidth}")
-
-    # Step 3: Fit the GWR model
-    gwr_results = GWR(coords, Y, X, bandwidth).fit()
-
-    # Step 4: Inspect results
-    print(gwr_results.summary())
-
-    # Step 5: Extract local coefficients
-    local_coefficients = gwr_results.params
-    print("Local Coefficients:\n", local_coefficients)
-
-
-    London_LSOA_polygons = gpd.read_file(inputs["London_LSOA_polygons"])
-    # Now use the polygons geometry for the analysis_21_24 dataframe
-    analysis_21_24 = analysis_21_24.merge(London_LSOA_polygons, on="LSOA21CD", how="outer")
-    # Now turn the analysis_21_24 dataframe into a geodataframe
-    analysis_21_24 = gpd.GeoDataFrame(analysis_21_24)
-
-    # Drop NaNs
-    analysis_21_24 = analysis_21_24.dropna()
-
-    # Link to GWR tutorial (follow for visualisation)
-    # https://deepnote.com/app/carlos-mendez/PYTHON-GWR-and-MGWR-71dd8ba9-a3ea-4d28-9b20-41cc8a282b7a
-
-    analysis_21_24['gwr_R2'] = gwr_results.localR2
-
-    # Step 6: Visualize local R^2
-    
-    fig, ax = plt.subplots(figsize=(6, 6))
-    analysis_21_24.plot(column='gwr_R2', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
-             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=ax)
-             #legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=ax)
-    ax.set_title('Local R2', fontsize=12)
-    ax.axis("off")
-    # plt.savefig('myMap.png',dpi=150, bbox_inches='tight')
-    plt.show()
-    
-
-    # Step 7: Visualize local coefficients
-    # Add coefficients to the dataframe
-    analysis_21_24['gwr_intercept'] = gwr_results.params[:, 0]
-    analysis_21_24['gwr_Med_HP_2021'] = gwr_results.params[:, 1]
-
-    # Filter/correct t-stats
-    analysis_21_24_filtered_t = gwr_results.filter_tvals(alpha=0.05)
-    analysis_21_24_filtered_t_df = pd.DataFrame(aanalysis_21_24_filtered_t)
-
-    # Filter t-values: corrected alpha due to multiple testing
-    analysis_21_24_filtered_tc = gwr_results.filter_tvals()
-    analysis_21_24_filtered_tc_df = pd.DataFrame(analysis_21_24_filtered_tc)
-
-    # Map coefficients
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(18, 6))
-
-    analysis_21_24.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.01, scheme='FisherJenks', k=5, legend=True,
-             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[0])
-
-    analysis_21_24.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
-             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[1])
-    analysis_21_24[analysis_21_24_filtered_t_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[1])
-
-    analysis_21_24.plot(column='gwr_Med_HP_2021', cmap='coolwarm', linewidth=0.05, scheme='FisherJenks', k=5, legend=False,
-             legend_kwds={'bbox_to_anchor': (1.10, 0.96)}, ax=axes[2])
-    analysis_21_24[analysis_21_241_filtered_tc_df[:, 1] == 0].plot(color='white', linewidth=0.05, edgecolor='black', ax=axes[2])
-
-    plt.tight_layout()
-
-    axes[0].axis("off")
-    axes[1].axis("off")
-    axes[2].axis("off")
-
-    axes[0].set_title('(a) GWR: Med_HP_2021 (BW: ' + str(bandwidth) + '), all coeffs', fontsize=12)
-    axes[1].set_title('(b) GWR: Med_HP_2021 (BW: ' + str(bandwidth) + '), significant coeffs', fontsize=12)
-    axes[2].set_title('(c) GWR: Med_HP_2021 (BW: ' + str(bandwidth) + '), significant coeffs and corr. p-values',
-                      fontsize=12)
-    plt.show()
-'''
-# GWR analysis 2021 (METHOD 2)
-# See here: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
+# GWR analysis
+# reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
 GRW_flag = True
 # Normalisation options:
 normalise_dependent_variables = True
 normalise_independent_variables = True
+
+# borough boundaries
+lsoa_gdf = gpd.read_file(inputs["London_LSOA_polygons"])
+
+def lsoa_boundaries(ax):
+    """ to plot boundaries on maps """
+    return lsoa_gdf.to_crs({'init': 'epsg:27700'}).plot(
+            ax=ax,
+            linewidth=.5,
+            color='#555555',
+            edgecolor='w',
+            alpha=.5,
+            zorder=1)
 
 if GRW_flag == True:
     London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
@@ -896,8 +799,119 @@ if GRW_flag == True:
                     analysis_21_24[i].max() - analysis_21_24[i].min())
 
 
-    # Example Y = EVCI2021, X = Med_HP_2021, Pop_density
     # arrange endog (y) as a column vector, i.e. an m x 1 array
+    for dep in cat_dep_variables:
+        print("GWR analysis for: ", dep)
+        endog = analysis_21_24[dep].values.reshape(-1, 1)
+        # exog (X) is an m x n array, where m is the number of rows, and n is the number of regressors
+        exog = analysis_21_24[cat_indep_variables].values
+
+        # Python 3 zip returns an iterable
+        coords = list(zip(analysis_21_24.x.values, analysis_21_24.y.values))
+
+        # Instantiate bandwidth selection class - bisquare NN (adaptive)
+        bw = Sel_BW(
+            coords,
+            endog,
+            exog,
+            kernel='bisquare', fixed=False)
+
+        # Find optimal bandwidth by minimizing AICc using golden section search algorithm
+        bw = Sel_BW(coords, endog, exog).search(criterion='AICc')
+        print("GWR Bandwith: ", bw)
+
+        # Instantiate GWR model and estimate parameters and diagnostics
+        model = GWR(
+            coords,
+            endog,
+            exog,
+            bw,
+            family=Gaussian(),
+            fixed=False,
+            kernel='gaussian')
+
+        results = model.fit()
+
+        # Map local R-square values (a weighted R-square at each observation location)
+        fig, ax = plt.subplots(1,
+                               figsize=(8, 8),
+                               dpi=100,
+                               subplot_kw=dict(aspect='equal'))
+
+        # add local R2 to df
+        analysis_21_24['localR2'] = results.localR2
+        vmin, vmax = np.min(analysis_21_24['localR2']), np.max(analysis_21_24['localR2'])
+        analysis_21_24.plot(
+            'localR2',
+            markersize=10.,
+            edgecolor='#555555',
+            linewidths=.25,
+            vmin=vmin,
+            vmax=vmax,
+            cmap='viridis',
+            ax=ax,
+            zorder=2)
+
+        # impose LSOA boundaries
+        lsoa_boundaries(ax)
+
+        ax.set_title('Local R-Squared. Dep. var: ' + dep)
+        fig = ax.get_figure()
+        sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
+        sm._A = []
+        fig.colorbar(sm)
+
+        _ = ax.axis('off')
+
+        # Save the figure
+        plt.savefig("./output-data/GWR-results/GWR_R2_" + dep + ".png")
+        #plt.show()
+
+        # copy the independent variables into a new list
+        labels = cat_indep_variables.copy()
+        # insert the intercept as the first label
+        labels.insert(0, 'Intercept')
+
+        # Map local coefficients
+        for param in range(1, results.params.shape[1]):
+            fig, ax = plt.subplots(1,
+                                   figsize=(8, 8),
+                                   dpi=100,
+                                   subplot_kw=dict(aspect='equal'))
+
+            # add local coefficients to df
+            analysis_21_24[str(param)] = results.params[:, param]
+            vmin, vmax = np.min(analysis_21_24[str(param)]), np.max(analysis_21_24[str(param)])
+            analysis_21_24.plot(
+                str(param),
+                markersize=10.,
+                edgecolor='#555555',
+                linewidths=.25,
+                vmin=vmin,
+                vmax=vmax,
+                cmap='viridis',
+                ax=ax,
+                zorder=2)
+
+            # impose LSOA boundaries
+            lsoa_boundaries(ax)
+
+            ax.set_title(labels[param] + ' Coefficient estimates. Dep. var: ' + dep)
+            fig = ax.get_figure()
+            sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
+            sm._A = []
+            fig.colorbar(sm)
+            _ = ax.axis('off')
+
+            # Save the figure
+            plt.savefig("./output-data/GWR-results/GWR_coeff_" + dep + "_" + labels[param] + ".png")
+            #plt.show()
+
+
+
+
+    '''
+    ############################################################################################
     endog = analysis_21_24.EVCI2021.values.reshape(-1, 1)
     # exog (X) is an m x n array, where m is the number of rows, and n is the number of regressors
     exog = analysis_21_24[['Med_HP_2021', 'Pop_density']].values
@@ -910,5 +924,90 @@ if GRW_flag == True:
         coords,
         endog,
         exog,
-        kernel='bisquare', fixed=False
-    )
+        kernel='bisquare', fixed=False)
+
+    # Find optimal bandwidth by minimizing AICc using golden section search algorithm
+    bw = Sel_BW(coords, endog, exog).search(criterion='AICc')
+    print("GWR Bandwith: ", bw)
+
+    # Instantiate GWR model and estimate parameters and diagnostics
+    model = GWR(
+        coords,
+        endog,
+        exog,
+        bw,
+        family=Gaussian(),
+        fixed=False,
+        kernel='gaussian')
+
+    results = model.fit()
+
+    # Map local R-square values (a weighted R-square at each observation location)
+    fig, ax = plt.subplots(1,
+                           figsize=(8, 8),
+                           dpi=100,
+                           subplot_kw=dict(aspect='equal'))
+
+    # add local R2 to df
+    analysis_21_24['localR2'] = results.localR2
+    vmin, vmax = np.min(analysis_21_24['localR2']), np.max(analysis_21_24['localR2'])
+    analysis_21_24.plot(
+        'localR2',
+        markersize=5.,
+        edgecolor='#555555',
+        linewidths=.25,
+        vmin=vmin,
+        vmax=vmax,
+        cmap='viridis',
+        ax=ax,
+        zorder=2)
+
+    # impose LSOA boundaries
+    lsoa_boundaries(ax)
+
+    ax.set_title('Local R-Squared')
+    fig = ax.get_figure()
+    cax = fig.add_axes([0.98, 0.2, 0.03, 0.6])
+    sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
+    sm._A = []
+    fig.colorbar(sm, cax=cax)
+    _ = ax.axis('off')
+
+    plt.show()
+
+    labels = ['Intercept', 'Med_HP_2021', 'Pop_density']
+
+    # Map local coefficients
+    for param in range(1, results.params.shape[1]):
+        fig, ax = plt.subplots(1,
+                               figsize=(8, 8),
+                               dpi=100,
+                               subplot_kw=dict(aspect='equal'))
+
+        # add local coefficients to df
+        analysis_21_24[str(param)] = results.params[:, param]
+        vmin, vmax = np.min(analysis_21_24[str(param)]), np.max(analysis_21_24[str(param)])
+        analysis_21_24.plot(
+            str(param),
+            markersize=5.,
+            edgecolor='#555555',
+            linewidths=.25,
+            vmin=vmin,
+            vmax=vmax,
+            cmap='viridis',
+            ax=ax,
+            zorder=2)
+
+        # impose LSOA boundaries
+        lsoa_boundaries(ax)
+
+        ax.set_title(labels[param] + ' Coefficient estimates')
+        fig = ax.get_figure()
+        cax = fig.add_axes([0.98, 0.2, 0.03, 0.6])
+        sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
+        sm._A = []
+        fig.colorbar(sm, cax=cax)
+        _ = ax.axis('off')
+
+        plt.show()
+'''
