@@ -21,6 +21,13 @@ from mgwr.sel_bw import Sel_BW
 from scipy.spatial import distance
 from utils import *
 
+import pysal as ps
+from pysal.contrib import gwr
+from pysal.contrib.gwr.gwr import GWR
+from pysal.contrib.gwr.sel_bw import Sel_BW
+from pysal.contrib.glm.family import Gaussian
+
+
 # Create the EVCI-year column in EVCI data set
 if not os.path.exists(generated["EVCI-London"]):
     # Import EVCI counts at lsoa level
@@ -333,7 +340,7 @@ if CSCA_2021_2024_flag == True:
     plt_and_save_corr_matrix(analysis_21_24, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
-OLS_2021_2024_flag = True
+OLS_2021_2024_flag = False
 # Normalisation options:
 normalise_dependent_variables = True
 normalise_independent_variables = True
@@ -704,7 +711,6 @@ if OLS_2021_2024_flag == True:
     # save the summary table
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
 
-# Geographically Weighted Regression (GWR) analysis 2021
 '''
 GWR_flag_METHOD1 = False
 if GWR_flag_METHOD1 == True:
@@ -815,3 +821,94 @@ if GWR_flag_METHOD1 == True:
 # GWR analysis 2021 (METHOD 2)
 # See here: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
+GRW_flag = True
+# Normalisation options:
+normalise_dependent_variables = True
+normalise_independent_variables = True
+
+if GRW_flag == True:
+    London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
+    # Now use the polygons geometry for the analysis_21_24 dataframe
+    analysis_21_24 = analysis_21_24.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
+    # Now turn the analysis_21_24 dataframe into a geodataframe
+    analysis_21_24 = gpd.GeoDataFrame(analysis_21_24)
+
+    # Rename columns
+    analysis_21_24.rename(columns={"LSOA21NM_x": "LSOA21NM"}, inplace=True)
+    # Drop extra columns
+    analysis_21_24.drop(columns=["LSOA21NM_y", "GlobalID"], inplace=True)
+
+    # Remove NaNs
+    analysis_21_24 = analysis_21_24.dropna()
+
+    # Turn the geometry column into a x and y column
+    analysis_21_24["x"] = analysis_21_24.centroid.x
+    analysis_21_24["y"] = analysis_21_24.centroid.y
+
+    # categorise the variables in dependent and independent variables and save the categorisation into two lists:
+    cat_dep_variables = ["EVCI2021",         # EVCI 2021
+                         "y2021Q4",          # EV licensing 2021
+                         "EVCI2024",         # EVCI 2024
+                         "y2024Q2",          # EV licensing 2024
+                         "accessibility_21", # Accessibility 2021
+                         "accessibility_24", # Accessibility 2024
+                         "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
+
+    cat_indep_variables = ["Med_HP_2021",             # Median house prices 2021 (December)
+                           "ASG_AB",                  # Approx social grade (higher and intermediate occ.)
+                           "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
+                           "ASG_C2",                  # Approx social grade (Skilled manual occ.)
+                           "ASG_DE",                  # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
+                           "D0",                      # Deprivation index 0 (no dimensions)
+                           "D1",                      # Deprivation index 1 (1 dimension)
+                           "D2",                      # Deprivation index 2 (2 dimensions)
+                           "D3",                      # Deprivation index 3 (3 dimensions)
+                           "D4",                      # Deprivation index 4 (4 dimensions)
+                           "Pop_density",             # Population density
+                           "HH_cars_0",               # N of HH with 0 cars
+                           "HH_cars_1",               # N of HH with 1 car
+                           "HH_cars_2",               # N of HH with 2 cars
+                           "HH_cars_3+",              # N of HH with 3+ cars
+                           "HHT_rent_free",           # N of HH living rent-free
+                           "HHT_owned_outright",      # N of HH owning outright
+                           "HHT_owned_mortgage",      # N of HH owning with mortgage
+                           "HHT_rented_other",        # N of HH renting from other private landlords
+                           "HHT_rented_private",      # N of HH renting from private landlords
+                           "HHT_shared_ownership",    # N of HH in shared ownership
+                           "HHT_rented_social",       # N of HH renting from social landlords
+                           "Acc_detached",            # N of HH living in detached houses
+                           "Acc_caravan",             # N of HH living in caravans
+                           "Acc_commercial",          # N of HH living in commercial buildings
+                           "Acc_flat",                # N of HH living in flats
+                           "Acc_converted_or_shared", # N of HH living in converted or shared houses
+                           "Acc_converted_other",     # N of HH living in other converted buildings
+                           "Acc_semidetached",        # N of HH living in semi-detached houses
+                           "Acc_terraced"]            # N of HH living in terraced houses
+
+    if normalise_dependent_variables == True:
+        for i in cat_dep_variables:
+            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
+                    analysis_21_24[i].max() - analysis_21_24[i].min())
+
+    if normalise_independent_variables == True:
+        for i in cat_indep_variables:
+            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
+                    analysis_21_24[i].max() - analysis_21_24[i].min())
+
+
+    # Example Y = EVCI2021, X = Med_HP_2021, Pop_density
+    # arrange endog (y) as a column vector, i.e. an m x 1 array
+    endog = analysis_21_24.EVCI2021.values.reshape(-1, 1)
+    # exog (X) is an m x n array, where m is the number of rows, and n is the number of regressors
+    exog = analysis_21_24[['Med_HP_2021', 'Pop_density']].values
+
+    # Python 3 zip returns an iterable
+    coords = list(zip(analysis_21_24.x.values, analysis_21_24.y.values))
+
+    # Instantiate bandwidth selection class - bisquare NN (adaptive)
+    bw = Sel_BW(
+        coords,
+        endog,
+        exog,
+        kernel='bisquare', fixed=False
+    )
