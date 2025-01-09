@@ -907,11 +907,8 @@ if GRW_flag == True:
             plt.savefig("./output-data/GWR-results/GWR_coeff_" + dep + "_" + labels[param] + ".png")
             #plt.show()
 
-
-
-
-    '''
-    ############################################################################################
+quick_GWR_single_flag = False
+if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dependent variable
     endog = analysis_21_24.EVCI2021.values.reshape(-1, 1)
     # exog (X) is an m x n array, where m is the number of rows, and n is the number of regressors
     exog = analysis_21_24[['Med_HP_2021', 'Pop_density']].values
@@ -920,25 +917,23 @@ if GRW_flag == True:
     coords = list(zip(analysis_21_24.x.values, analysis_21_24.y.values))
 
     # Instantiate bandwidth selection class - bisquare NN (adaptive)
-    bw = Sel_BW(
-        coords,
-        endog,
-        exog,
-        kernel='bisquare', fixed=False)
+    bw = Sel_BW(coords,
+                endog,
+                exog,
+                kernel='bisquare', fixed=False)
 
     # Find optimal bandwidth by minimizing AICc using golden section search algorithm
     bw = Sel_BW(coords, endog, exog).search(criterion='AICc')
     print("GWR Bandwith: ", bw)
 
     # Instantiate GWR model and estimate parameters and diagnostics
-    model = GWR(
-        coords,
-        endog,
-        exog,
-        bw,
-        family=Gaussian(),
-        fixed=False,
-        kernel='gaussian')
+    model = GWR(coords,
+                endog,
+                exog,
+                bw,
+                family=Gaussian(),
+                fixed=False,
+                kernel='gaussian')
 
     results = model.fit()
 
@@ -1010,4 +1005,3 @@ if GRW_flag == True:
         _ = ax.axis('off')
 
         plt.show()
-'''
