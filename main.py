@@ -841,6 +841,7 @@ if GRW_flag == True:
         # add local R2 to df
         analysis_21_24['localR2'] = results.localR2
         vmin, vmax = np.min(analysis_21_24['localR2']), np.max(analysis_21_24['localR2'])
+
         analysis_21_24.plot(
             'localR2',
             markersize=10.,
@@ -882,6 +883,23 @@ if GRW_flag == True:
             # add local coefficients to df
             analysis_21_24[str(param)] = results.params[:, param]
             vmin, vmax = np.min(analysis_21_24[str(param)]), np.max(analysis_21_24[str(param)])
+
+            max_abs_val = max(abs(vmin), abs(vmax))
+
+            # Define the colormap and normalization
+            if vmin < 0 and vmax > 0:
+                # Diverging colormap for both positive and negative values
+                cmap = 'RdYlGn'
+                norm = mcolors.TwoSlopeNorm(vmin=min(vmin, -max_abs_val), vcenter=0, vmax=max(vmax, max_abs_val))
+            elif vmax <= 0:
+                # Only negative values, use a red gradient
+                cmap = 'Reds'
+                norm = plt.Normalize(vmin=vmin, vmax=0)  # Normalize within the negative range
+            elif vmin >= 0:
+                # Only positive values, use a blue gradient
+                cmap = 'YlGn'
+                norm = plt.Normalize(vmin=0, vmax=vmax)  # Normalize within the positive range
+
             analysis_21_24.plot(
                 str(param),
                 markersize=10.,
@@ -889,7 +907,8 @@ if GRW_flag == True:
                 linewidths=.25,
                 vmin=vmin,
                 vmax=vmax,
-                cmap='viridis',
+                cmap=cmap,
+                norm=norm,
                 ax=ax,
                 zorder=2)
 
@@ -898,7 +917,7 @@ if GRW_flag == True:
 
             ax.set_title(labels[param] + ' Coefficient estimates. Dep. var: ' + dep)
             fig = ax.get_figure()
-            sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
+            sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
             sm._A = []
             fig.colorbar(sm)
             _ = ax.axis('off')
@@ -906,6 +925,10 @@ if GRW_flag == True:
             # Save the figure
             plt.savefig("./output-data/GWR-results/GWR_coeff_" + dep + "_" + labels[param] + ".png")
             #plt.show()
+
+        # Save the results into a csv file
+        analysis_21_24.to_csv("./output-data/GWR-results/GWR_results_" + dep + ".csv", index=False)
+
 
 quick_GWR_single_flag = False
 if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dependent variable
