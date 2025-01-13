@@ -21,7 +21,8 @@ from mgwr.sel_bw import Sel_BW
 from scipy.spatial import distance
 from utils import *
 from spglm.family import Gaussian
-
+import matplotlib.patches as mpatches
+from descartes import PolygonPatch
 
 
 # Create the EVCI-year column in EVCI data set
@@ -873,61 +874,73 @@ if GRW_flag == True:
         # insert the intercept as the first label
         labels.insert(0, 'Intercept')
 
-        # Map local coefficients
+        # Map local coefficients, only map the ones that are statistically significant based on the t-values
         for param in range(1, results.params.shape[1]):
-            fig, ax = plt.subplots(1,
-                                   figsize=(8, 8),
-                                   dpi=100,
-                                   subplot_kw=dict(aspect='equal'))
+            # Mask for statistically significant areas
+            significant_mask = np.abs(results.tvalues[:, param]) > 1.96
 
-            # add local coefficients to df
-            analysis_21_24[str(param)] = results.params[:, param]
-            vmin, vmax = np.min(analysis_21_24[str(param)]), np.max(analysis_21_24[str(param)])
+            # Check if there are any significant areas to plot
+            if significant_mask.any():
+                fig, ax = plt.subplots(1,
+                                       figsize=(8, 8),
+                                       dpi=100,
+                                       subplot_kw=dict(aspect='equal'))
 
-            max_abs_val = max(abs(vmin), abs(vmax))
+                # add local coefficients to df
+                analysis_21_24[str(param)] = results.params[:, param]
 
-            # Define the colormap and normalization
-            if vmin < 0 and vmax > 0:
-                # Diverging colormap for both positive and negative values
-                cmap = 'RdYlGn'
-                norm = mcolors.TwoSlopeNorm(vmin=min(vmin, -max_abs_val), vcenter=0, vmax=max(vmax, max_abs_val))
-            elif vmax <= 0:
-                # Only negative values, use a red gradient
-                cmap = 'Reds'
-                norm = plt.Normalize(vmin=vmin, vmax=0)  # Normalize within the negative range
-            elif vmin >= 0:
-                # Only positive values, use a blue gradient
-                cmap = 'YlGn'
-                norm = plt.Normalize(vmin=0, vmax=vmax)  # Normalize within the positive range
+                # Compute value ranges only for significant areas
+                significant_values = analysis_21_24.loc[significant_mask, str(param)]
+                vmin, vmax = significant_values.min(), significant_values.max()
 
-            analysis_21_24.plot(
-                str(param),
-                markersize=10.,
-                edgecolor='#555555',
-                linewidths=.25,
-                vmin=vmin,
-                vmax=vmax,
-                cmap=cmap,
-                norm=norm,
-                ax=ax,
-                zorder=2)
+                max_abs_val = max(abs(vmin), abs(vmax))
 
-            # impose LSOA boundaries
-            lsoa_boundaries(ax)
+                # Define the colormap and normalization
+                if vmin < 0 and vmax > 0:
+                    # Diverging colormap for both positive and negative values
+                    cmap = 'RdYlGn'
+                    norm = mcolors.TwoSlopeNorm(vmin=min(vmin, -max_abs_val),
+                                                vcenter=0,
+                                                vmax=max(vmax, max_abs_val))
+                elif vmax <= 0:
+                    # Only negative values, use a red gradient
+                    cmap = 'Reds_r'
+                    norm = plt.Normalize(vmin=vmin, vmax=0)
+                elif vmin >= 0:
+                    # Only positive values, use a blue gradient
+                    cmap = 'YlGn'
+                    norm = plt.Normalize(vmin=0, vmax=vmax)
 
-            ax.set_title(labels[param] + ' Coefficient estimates. Dep. var: ' + dep)
-            fig = ax.get_figure()
-            sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
-            sm._A = []
-            fig.colorbar(sm)
-            _ = ax.axis('off')
+                # Plot only the significant areas
+                analysis_21_24[significant_mask].plot(
+                    str(param),
+                    markersize=10.,
+                    edgecolor='#555555',
+                    linewidths=.25,
+                    vmin=vmin,
+                    vmax=vmax,
+                    cmap=cmap,
+                    norm=norm,
+                    ax=ax,
+                    zorder=2
+                )
 
-            # Save the figure
-            plt.savefig("./output-data/GWR-results/GWR_coeff_" + dep + "_" + labels[param] + ".png")
-            #plt.show()
+                # impose LSOA boundaries
+                lsoa_boundaries(ax)
 
-        # Save the results into a csv file
-        analysis_21_24.to_csv("./output-data/GWR-results/GWR_results_" + dep + ".csv", index=False)
+                ax.set_title(labels[param] + ' Coefficient estimates. Dep. var: ' + dep)
+                fig = ax.get_figure()
+
+                # Add colorbar
+                sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+                sm._A = []
+                fig.colorbar(sm)
+
+                _ = ax.axis('off')
+
+                # Save the figure
+                plt.savefig("./output-data/GWR-results/GWR_coeff_" + dep + "_" + labels[param] + ".png")
+                #plt.show()
 
 
 quick_GWR_single_flag = False
