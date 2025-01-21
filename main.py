@@ -712,7 +712,7 @@ if OLS_2021_2024_flag == True:
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GRW_flag = True
+GRW_flag = False
 # Normalisation options:
 normalise_dependent_variables = True
 normalise_independent_variables = True
@@ -1041,3 +1041,87 @@ if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dep
         _ = ax.axis('off')
 
         plt.show()
+
+########################################################################################################################
+# Calculate the gini coefficient for accessibility in 2021 and 2024
+
+# Load the accessibility data, make them numpy arrays
+accessibility_21 = np.array(analysis_21_24["accessibility_21"])
+accessibility_24 = np.array(analysis_21_24["accessibility_24"])
+
+# Remove NaNs
+accessibility_21 = accessibility_21[~np.isnan(accessibility_21)]
+accessibility_24 = accessibility_24[~np.isnan(accessibility_24)]
+
+# check if the data contains negative values
+if (accessibility_21 < 0).any() or (accessibility_24 < 0).any():
+    raise ValueError("Data contains negative values. Gini coefficient cannot be calculated.")
+
+def gini_index_and_plot(values, year):
+    """
+    Calculate the Gini index for a 1D array of values and plot the Lorenz curve.
+
+    Parameters:
+        values (array-like): The values to calculate the Gini index for.
+        year (str): The year or label for the plot title.
+
+    Returns:
+        float: The Gini index, or None if it cannot be calculated.
+    """
+    # Ensure the values are a NumPy array
+    values = np.array(values)
+
+    # Handle cases where all values are zero or identical
+    if len(values) == 0 or np.all(values == 0):
+        print(f"No variability in values for {year}. Gini cannot be calculated.")
+        return None
+
+    # Sort values in ascending order
+    sorted_values = np.sort(values)
+
+    # Handle cases where all values are identical
+    if np.all(sorted_values == sorted_values[0]):
+        print(f"All values are identical for {year}. Gini = 0 (perfect equality).")
+        return 0.0
+
+    # Calculate the cumulative sum of the values
+    cumulative_values = np.cumsum(sorted_values)
+    total = cumulative_values[-1]
+
+    # Calculate the cumulative population and value proportions
+    n = len(values)
+    cumulative_population = np.linspace(0, 1, n + 1)  # Include 0 at the start for proper Lorenz curve
+    cumulative_share = np.concatenate([[0], cumulative_values / total])  # Include 0 at the start for Lorenz curve
+
+    # Use the Gini formula
+    gini = 1 - 2 * np.sum((cumulative_share[:-1] + cumulative_share[1:]) * np.diff(cumulative_population))
+
+    # Plot the Lorenz curve
+    plt.figure(figsize=(8, 8))
+    plt.plot(cumulative_population, cumulative_share, label="Lorenz Curve", color="blue", linewidth=2)
+    plt.plot([0, 1], [0, 1], label="Line of Equality", color="red", linestyle="--", linewidth=1.5)  # Equality line
+    plt.fill_between(cumulative_population, cumulative_share, cumulative_population,
+                     color="blue", alpha=0.2, label=f"Gini: {gini:.4f}")
+    plt.title(f"Lorenz Curve and Gini Coefficient for {year}")
+    plt.xlabel("Cumulative Population Proportion")
+    plt.ylabel("Cumulative Value Proportion")
+    plt.legend(loc="lower right")
+    plt.grid()
+    plt.show()
+
+    return gini
+
+
+# Calculate and plot Gini index for both years
+gini_2021 = gini_index_and_plot(accessibility_21, "2021")
+gini_2024 = gini_index_and_plot(accessibility_24, "2024")
+
+print(f"Gini Index for 2021: {gini_2021}")
+print(f"Gini Index for 2024: {gini_2024}")
+
+
+
+
+
+
+########################################################################################################################
