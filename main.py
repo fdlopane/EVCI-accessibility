@@ -337,7 +337,7 @@ if CSCA_2021_2024_flag == True:
     plt_and_save_corr_matrix(analysis_21_24, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
-OLS_2021_2024_flag = False
+OLS_2021_2024_flag = True
 # Normalisation options:
 normalise_dependent_variables = True
 normalise_independent_variables = True
@@ -708,7 +708,47 @@ if OLS_2021_2024_flag == True:
     # save the summary table
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
 
+    # __________________________________________________________________________________________________________________
+    # OLS for ACCESSIBILITY DIFFERENCE 2024-2021 - SINGLE MODEL (all variables together)
+    dependent_variable = "acc_diff_24_21"
+    independent_variables = ["ASG_AB",  # Approx social grade (higher and intermediate occ.)
+                              "ASG_C1",  # Approx social grade (Supervisory and junior managerial  occ.)
+                              "ASG_C2",  # Approx social grade (Skilled manual occ.)
+                              "ASG_DE",  # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
+                             #"Med_HP_2021",  # Median house prices 2021 (December)
+                             #"Med_HP_2023",  # Median house prices 2023 (March)
+                             "D0",  # Deprivation index 0 (no dimensions)
+                              "D1",  # Deprivation index 1 (1 dimension)
+                              "D2",  # Deprivation index 2 (2 dimensions)
+                              "D3",  # Deprivation index 3 (3 dimensions)
+                              "D4",  # Deprivation index 4 (4 dimensions)
+                             "Pop_density",  # Population density
+                             "HH_cars_0",  # N of HH with 0 cars
+                              "HH_cars_1",  # N of HH with 1 car
+                              "HH_cars_2",  # N of HH with 2 cars
+                              "HH_cars_3+",  # N of HH with 3+ cars
+                             "HHT_rent_free",  # N of HH living rent-free
+                              "HHT_owned_outright",  # N of HH owning outright
+                              "HHT_owned_mortgage",  # N of HH owning with mortgage
+                              "HHT_rented_other",  # N of HH renting from other private landlords
+                              "HHT_rented_private",  # N of HH renting from private landlords
+                              "HHT_shared_ownership",  # N of HH in shared ownership
+                              "HHT_rented_social",  # N of HH renting from social landlords
+                             "Acc_detached",  # N of HH living in detached houses
+                              "Acc_caravan",  # N of HH living in caravans
+                              "Acc_commercial",  # N of HH living in commercial buildings
+                              "Acc_flat",  # N of HH living in flats
+                              "Acc_converted_or_shared",  # N of HH living in converted or shared houses
+                              "Acc_converted_other",  # N of HH living in other converted buildings
+                              "Acc_semidetached",  # N of HH living in semi-detached houses
+                              "Acc_terraced"]  # N of HH living in terraced houses
 
+    acc_diff_summary_table_24_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+
+    # save the summary table
+    acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24_single_model"], index=False)
+
+########################################################################################################################
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
@@ -1043,85 +1083,81 @@ if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dep
         plt.show()
 
 ########################################################################################################################
-# Calculate the gini coefficient for accessibility in 2021 and 2024
+# Calculate the Gini coefficient for accessibility in 2021 and 2024
+calculate_Gini_flag = False
 
-# Load the accessibility data, make them numpy arrays
-accessibility_21 = np.array(analysis_21_24["accessibility_21"])
-accessibility_24 = np.array(analysis_21_24["accessibility_24"])
+if calculate_Gini_flag == True:
+    # Load the accessibility data, make them numpy arrays
+    accessibility_21 = np.array(analysis_21_24["accessibility_21"])
+    accessibility_24 = np.array(analysis_21_24["accessibility_24"])
 
-# Remove NaNs
-accessibility_21 = accessibility_21[~np.isnan(accessibility_21)]
-accessibility_24 = accessibility_24[~np.isnan(accessibility_24)]
+    # Remove NaNs
+    accessibility_21 = accessibility_21[~np.isnan(accessibility_21)]
+    accessibility_24 = accessibility_24[~np.isnan(accessibility_24)]
 
-# check if the data contains negative values
-if (accessibility_21 < 0).any() or (accessibility_24 < 0).any():
-    raise ValueError("Data contains negative values. Gini coefficient cannot be calculated.")
+    # check if the data contains negative values
+    if (accessibility_21 < 0).any() or (accessibility_24 < 0).any():
+        raise ValueError("Data contains negative values. Gini coefficient cannot be calculated.")
 
-def gini_index_and_plot(values, year):
-    """
-    Calculate the Gini index for a 1D array of values and plot the Lorenz curve.
+    def gini_index_and_plot(values, year):
+        """
+        Calculate the Gini index for a 1D array of values and plot the Lorenz curve.
 
-    Parameters:
-        values (array-like): The values to calculate the Gini index for.
-        year (str): The year or label for the plot title.
+        Parameters:
+            values (array-like): The values to calculate the Gini index for.
+            year (str): The year or label for the plot title.
 
-    Returns:
-        float: The Gini index, or None if it cannot be calculated.
-    """
-    # Ensure the values are a NumPy array
-    values = np.array(values)
+        Returns:
+            float: The Gini index, or None if it cannot be calculated.
+        """
+        # Ensure the values are a NumPy array
+        values = np.array(values)
 
-    # Handle cases where all values are zero or identical
-    if len(values) == 0 or np.all(values == 0):
-        print(f"No variability in values for {year}. Gini cannot be calculated.")
-        return None
+        # Handle cases where all values are zero or identical
+        if len(values) == 0 or np.all(values == 0):
+            print(f"No variability in values for {year}. Gini cannot be calculated.")
+            return None
 
-    # Sort values in ascending order
-    sorted_values = np.sort(values)
+        # Sort values in ascending order
+        sorted_values = np.sort(values)
 
-    # Handle cases where all values are identical
-    if np.all(sorted_values == sorted_values[0]):
-        print(f"All values are identical for {year}. Gini = 0 (perfect equality).")
-        return 0.0
+        # Handle cases where all values are identical
+        if np.all(sorted_values == sorted_values[0]):
+            print(f"All values are identical for {year}. Gini = 0 (perfect equality).")
+            return 0.0
 
-    # Calculate the cumulative sum of the values
-    cumulative_values = np.cumsum(sorted_values)
-    total = cumulative_values[-1]
+        # Calculate the cumulative sum of the values
+        cumulative_values = np.cumsum(sorted_values)
+        total = cumulative_values[-1]
 
-    # Calculate the cumulative population and value proportions
-    n = len(values)
-    cumulative_population = np.linspace(0, 1, n + 1)  # Include 0 at the start for proper Lorenz curve
-    cumulative_share = np.concatenate([[0], cumulative_values / total])  # Include 0 at the start for Lorenz curve
+        # Calculate the cumulative population and value proportions
+        n = len(values)
+        cumulative_population = np.linspace(0, 1, n + 1)  # Include 0 at the start for proper Lorenz curve
+        cumulative_share = np.concatenate([[0], cumulative_values / total])  # Include 0 at the start for Lorenz curve
 
-    # Use the Gini formula
-    gini = 1 - 2 * np.sum((cumulative_share[:-1] + cumulative_share[1:]) * np.diff(cumulative_population))
+        # Use the Gini formula
+        gini = 1 - 2 * np.sum((cumulative_share[:-1] + cumulative_share[1:]) * np.diff(cumulative_population))
 
-    # Plot the Lorenz curve
-    plt.figure(figsize=(8, 8))
-    plt.plot(cumulative_population, cumulative_share, label="Lorenz Curve", color="blue", linewidth=2)
-    plt.plot([0, 1], [0, 1], label="Line of Equality", color="red", linestyle="--", linewidth=1.5)  # Equality line
-    plt.fill_between(cumulative_population, cumulative_share, cumulative_population,
-                     color="blue", alpha=0.2, label=f"Gini: {gini:.4f}")
-    plt.title(f"Lorenz Curve and Gini Coefficient for {year}")
-    plt.xlabel("Cumulative Population Proportion")
-    plt.ylabel("Cumulative Value Proportion")
-    plt.legend(loc="lower right")
-    plt.grid()
-    plt.show()
+        # Plot the Lorenz curve
+        plt.figure(figsize=(8, 8))
+        plt.plot(cumulative_population, cumulative_share, label="Lorenz Curve", color="blue", linewidth=2)
+        plt.plot([0, 1], [0, 1], label="Line of Equality", color="red", linestyle="--", linewidth=1.5)  # Equality line
+        plt.fill_between(cumulative_population, cumulative_share, cumulative_population,
+                         color="blue", alpha=0.2, label=f"Gini: {gini:.4f}")
+        plt.title(f"Lorenz Curve and Gini Coefficient for {year}")
+        plt.xlabel("Cumulative Population Proportion")
+        plt.ylabel("Cumulative Value Proportion")
+        plt.legend(loc="lower right")
+        plt.grid()
+        plt.show()
 
-    return gini
+        return gini
 
+    # Calculate and plot Gini index for both years
+    gini_2021 = gini_index_and_plot(accessibility_21, "2021")
+    gini_2024 = gini_index_and_plot(accessibility_24, "2024")
 
-# Calculate and plot Gini index for both years
-gini_2021 = gini_index_and_plot(accessibility_21, "2021")
-gini_2024 = gini_index_and_plot(accessibility_24, "2024")
-
-print(f"Gini Index for 2021: {gini_2021}")
-print(f"Gini Index for 2024: {gini_2024}")
-
-
-
-
-
+    print(f"Gini Index for 2021: {gini_2021}")
+    print(f"Gini Index for 2024: {gini_2024}")
 
 ########################################################################################################################
