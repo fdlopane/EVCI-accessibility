@@ -196,9 +196,9 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
 
     # Add a column for significance
     summary_table['Significance'] = ''
-    summary_table.loc[summary_table['p-Value'] <= 0.001, 'Significance'] = '***'
-    summary_table.loc[(summary_table['p-Value'] > 0.001) & (summary_table['p-Value'] <= 0.01), 'Significance'] = '**'
-    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '*'
+    summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
+    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
+    summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
     # Move the significance column straight after the p-Value column
     cols = summary_table.columns.tolist()
     cols = cols[:6] + cols[-1:] + cols[6:-1]

@@ -331,6 +331,89 @@ analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] - analysis
 #analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
 #analysis_21_24.drop(columns=["LSOA21NM", "HH_number"], inplace=True)
 
+# Reduce the number of variables by collapsing some of them
+'''
+TODO: Variables to be created:
+- Approx social grade (ASG): combine the 4 categories into 2: AB and CDE
+- Deprivation index: only keep 2+ dimensions (in a single variable)
+- Vehicle ownership: combine the 4 categories into 2: 0-1 cars and 2+ cars
+- House tenure: combine the 8 categories into 3: owned, rented, and other
+- Accommodation type: combine the 8 categories into 3: detached+semidetached, flat, and other
+'''
+
+# Approx social grade (ASG)
+analysis_21_24["ASG_AB_C1"] = analysis_21_24["ASG_AB"] + analysis_21_24["ASG_C1"]
+analysis_21_24["ASG_C2_DE"] = analysis_21_24["ASG_C2"] + analysis_21_24["ASG_DE"]
+
+# Deprivation index
+analysis_21_24["D2+"] = analysis_21_24["D2"] + analysis_21_24["D3"] + analysis_21_24["D4"]
+
+# Vehicle ownership
+analysis_21_24["HH_cars_0_1"] = analysis_21_24["HH_cars_0"] + analysis_21_24["HH_cars_1"]
+analysis_21_24["HH_cars_2+"] = analysis_21_24["HH_cars_2"] + analysis_21_24["HH_cars_3+"]
+
+# House tenure
+analysis_21_24["HHT_owned"] = (analysis_21_24["HHT_owned_outright"]
+                               + analysis_21_24["HHT_owned_mortgage"]
+                               + analysis_21_24["HHT_shared_ownership"])
+
+analysis_21_24["HHT_rented"] = (analysis_21_24["HHT_rented_other"]
+                                + analysis_21_24["HHT_rented_private"]
+                                + analysis_21_24["HHT_rented_social_other"]
+                                + analysis_21_24["HHT_rented_social"])
+
+# Accommodation type
+analysis_21_24["Acc_detached_semidet"] = (analysis_21_24["Acc_detached"]
+                                               + analysis_21_24["Acc_semidetached"])
+analysis_21_24["Acc_flat"] = (analysis_21_24["Acc_flat"]
+                              + analysis_21_24["Acc_converted_or_shared"]
+                              + analysis_21_24["Acc_converted_other"])
+
+analysis_21_24["Acc_other"] = (analysis_21_24["Acc_caravan"]
+                               + analysis_21_24["Acc_commercial"]
+                               + analysis_21_24["Acc_terraced"])
+'''
+# change the units of my variables to make the coefficients bigger
+# but first check the magnitude of the variables with some print statements
+print("Median house prices 2021: ", analysis_21_24["Med_HP_2021"].min(), analysis_21_24["Med_HP_2021"].max())
+print("Median house prices 2023: ", analysis_21_24["Med_HP_2023"].min(), analysis_21_24["Med_HP_2023"].max())
+print("Approx social grade AB+C1: ", analysis_21_24["ASG_AB_C1"].min(), analysis_21_24["ASG_AB_C1"].max())
+print("Approx social grade C2+DE: ", analysis_21_24["ASG_C2_DE"].min(), analysis_21_24["ASG_C2_DE"].max())
+print("Deprivation index 2+: ", analysis_21_24["D2+"].min(), analysis_21_24["D2+"].max())
+print("Population density: ", analysis_21_24["Pop_density"].min(), analysis_21_24["Pop_density"].max())
+print("HH cars 0-1: ", analysis_21_24["HH_cars_0_1"].min(), analysis_21_24["HH_cars_0_1"].max())
+print("HH cars 2+: ", analysis_21_24["HH_cars_2+"].min(), analysis_21_24["HH_cars_2+"].max())
+print("HHT owned: ", analysis_21_24["HHT_owned"].min(), analysis_21_24["HHT_owned"].max())
+print("HHT rented: ", analysis_21_24["HHT_rented"].min(), analysis_21_24["HHT_rented"].max())
+print("Acc detached+semidet: ", analysis_21_24["Acc_detached_semidet"].min(), analysis_21_24["Acc_detached_semidet"].max())
+print("Acc flat: ", analysis_21_24["Acc_flat"].min(), analysis_21_24["Acc_flat"].max())
+print("Acc other: ", analysis_21_24["Acc_other"].min(), analysis_21_24["Acc_other"].max())
+
+# print the min and max also for the dependent variables
+print("EVCI 2021: ", analysis_21_24["EVCI2021"].min(), analysis_21_24["EVCI2021"].max())
+print("EVCI 2024: ", analysis_21_24["EVCI2024"].min(), analysis_21_24["EVCI2024"].max())
+print("EV licensing 2021: ", analysis_21_24["y2021Q4"].min(), analysis_21_24["y2021Q4"].max())
+print("EV licensing 2024: ", analysis_21_24["y2024Q2"].min(), analysis_21_24["y2024Q2"].max())
+print("Accessibility 2021: ", analysis_21_24["accessibility_21"].min(), analysis_21_24["accessibility_21"].max())
+print("Accessibility 2024: ", analysis_21_24["accessibility_24"].min(), analysis_21_24["accessibility_24"].max())
+print("Accessibility difference 2024-2021: ", analysis_21_24["acc_diff_24_21"].min(), analysis_21_24["acc_diff_24_21"].max())
+'''
+
+thousands_flag = True
+if thousands_flag == True:
+    analysis_21_24["ASG_AB_C1"] = analysis_21_24["ASG_AB_C1"] / 1000
+    analysis_21_24["ASG_C2_DE"] = analysis_21_24["ASG_C2_DE"] / 1000
+    analysis_21_24["D2+"] = analysis_21_24["D2+"] / 1000
+    analysis_21_24["Pop_density"] = analysis_21_24["Pop_density"] / 1000
+    analysis_21_24["HH_cars_0_1"] = analysis_21_24["HH_cars_0_1"] / 1000
+    analysis_21_24["HH_cars_2+"] = analysis_21_24["HH_cars_2+"] / 1000
+    analysis_21_24["HHT_owned"] = analysis_21_24["HHT_owned"] / 1000
+    analysis_21_24["HHT_rented"] = analysis_21_24["HHT_rented"] / 1000
+    analysis_21_24["Acc_detached_semidet"] = analysis_21_24["Acc_detached_semidet"] / 1000
+    analysis_21_24["Acc_flat"] = analysis_21_24["Acc_flat"] / 1000
+    analysis_21_24["Acc_other"] = analysis_21_24["Acc_other"] / 1000
+    analysis_21_24["Acc_terraced"] = analysis_21_24["Acc_terraced"] / 1000
+
 # Correlation matrix
 CSCA_2021_2024_flag = False
 if CSCA_2021_2024_flag == True:
@@ -339,8 +422,8 @@ if CSCA_2021_2024_flag == True:
 # OLS analysis
 OLS_2021_2024_flag = True
 # Normalisation options:
-normalise_dependent_variables = True
-normalise_independent_variables = True
+normalise_dependent_variables = False
+normalise_independent_variables = False
 
 if OLS_2021_2024_flag == True:
     # print if the dependent and independent variables are normalised according to the options
@@ -356,7 +439,6 @@ if OLS_2021_2024_flag == True:
     analysis_21_24["Med_HP_2021"] = np.log(analysis_21_24["Med_HP_2021"])
     analysis_21_24["Med_HP_2023"] = np.log(analysis_21_24["Med_HP_2023"])
 
-    # normalise the variables with the Min-Max scaling
     # categorise the variables in dependent and independent variables and save the categorisation into two lists:
     cat_dep_variables = ["EVCI2021",         # EVCI 2021
                          "y2021Q4",          # EV licensing 2021
@@ -367,36 +449,20 @@ if OLS_2021_2024_flag == True:
                          "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
 
     cat_indep_variables = ["Med_HP_2021",             # Median house prices 2021 (December)
-                           "ASG_AB",                  # Approx social grade (higher and intermediate occ.)
-                           "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                           "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                           "ASG_DE",                  # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                           "D0",                      # Deprivation index 0 (no dimensions)
-                           "D1",                      # Deprivation index 1 (1 dimension)
-                           "D2",                      # Deprivation index 2 (2 dimensions)
-                           "D3",                      # Deprivation index 3 (3 dimensions)
-                           "D4",                      # Deprivation index 4 (4 dimensions)
+                           "Med_HP_2023",             # Median house prices 2023 (March)
+                           "ASG_AB_C1",               # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                           "ASG_C2_DE",               # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                           "D2+",                     # Deprivation index: n of HH deprived in 2+ dimensions
                            "Pop_density",             # Population density
-                           "HH_cars_0",               # N of HH with 0 cars
-                           "HH_cars_1",               # N of HH with 1 car
-                           "HH_cars_2",               # N of HH with 2 cars
-                           "HH_cars_3+",              # N of HH with 3+ cars
-                           "HHT_rent_free",           # N of HH living rent-free
-                           "HHT_owned_outright",      # N of HH owning outright
-                           "HHT_owned_mortgage",      # N of HH owning with mortgage
-                           "HHT_rented_other",        # N of HH renting from other private landlords
-                           "HHT_rented_private",      # N of HH renting from private landlords
-                           "HHT_shared_ownership",    # N of HH in shared ownership
-                           "HHT_rented_social",       # N of HH renting from social landlords
-                           "Acc_detached",            # N of HH living in detached houses
-                           "Acc_caravan",             # N of HH living in caravans
-                           "Acc_commercial",          # N of HH living in commercial buildings
+                           "HH_cars_0_1",             # N of HH with 0 or 1 car
+                           "HH_cars_2+",              # N of HH with 2+ cars
+                           "HHT_owned",               # N of HH owning outright + mortgage + shared ownership
+                           "HHT_rented",              # N of HH renting
+                           "Acc_detached_semidet",    # N of HH living in detached and semidetached houses
                            "Acc_flat",                # N of HH living in flats
-                           "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                           "Acc_converted_other",     # N of HH living in other converted buildings
-                           "Acc_semidetached",        # N of HH living in semi-detached houses
-                           "Acc_terraced"]            # N of HH living in terraced houses
+                           "Acc_terraced"]            # N of HH living in terraced
 
+    # normalise the variables with the Min-Max scaling
     if normalise_dependent_variables == True:
         for i in cat_dep_variables:
             analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
@@ -436,36 +502,18 @@ if OLS_2021_2024_flag == True:
     # OLS for SUPPLY 2021
     dependent_variable = "EVCI2021"
     independent_variables = [["y2021Q4"],               # EV licensing 2021
-                             ["Med_HP_2021"],           # Median house prices 2021 (December)
-                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
-                             "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                             "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                     # Deprivation index 0 (no dimensions)
-                             "D1",                      # Deprivation index 1 (1 dimension)
-                             "D2",                      # Deprivation index 2 (2 dimensions)
-                             "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                     # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],           # Population density
-                             ["HH_cars_0",              # N of HH with 0 cars
-                             "HH_cars_1",               # N of HH with 1 car
-                             "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],             # N of HH with 3+ cars
-                             ["HHT_rent_free",          # N of HH living rent-free
-                             "HHT_owned_outright",      # N of HH owning outright
-                             "HHT_owned_mortgage",      # N of HH owning with mortgage
-                             "HHT_rented_other",        # N of HH renting from other private landlords
-                             "HHT_rented_private",      # N of HH renting from private landlords
-                             "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],      # N of HH renting from social landlords
-                             ["Acc_detached",           # N of HH living in detached houses
-                             "Acc_caravan",             # N of HH living in caravans
-                             "Acc_commercial",          # N of HH living in commercial buildings
-                             "Acc_flat",                # N of HH living in flats
-                             "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                             "Acc_converted_other",     # N of HH living in other converted buildings
-                             "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]           # N of HH living in terraced houses
+                             ["Med_HP_2021",             # Median house prices 2021 (December)
+                              "ASG_AB_C1",               # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                              "ASG_C2_DE",               # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                              "D2+",                     # Deprivation index: n of HH deprived in 2+ dimensions
+                              "Pop_density",             # Population density
+                              "HH_cars_0_1",             # N of HH with 0 or 1 car
+                              "HH_cars_2+",              # N of HH with 2+ cars
+                              "HHT_owned",               # N of HH owning outright + mortgage + shared ownership
+                              "HHT_rented",              # N of HH renting
+                              "Acc_detached_semidet",    # N of HH living in detached and semidetached houses
+                              "Acc_flat",                # N of HH living in flats
+                              "Acc_terraced"]]           # N of HH living in terraced houses
 
 
     supply_summary_table_21 = normalise_and_run_OLS(["y2021Q4"], normalise_dependent_variables, normalise_independent_variables)
@@ -475,37 +523,19 @@ if OLS_2021_2024_flag == True:
     # __________________________________________________________________________________________________________________
     # OLS for DEMAND 2021
     dependent_variable = "y2021Q4"
-    independent_variables = [["EVCI2021"],              # EVCI 2021
-                             ["Med_HP_2021"],           # Median house prices 2021 (December)
-                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
-                             "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                             "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                     # Deprivation index 0 (no dimensions)
-                             "D1",                      # Deprivation index 1 (1 dimension)
-                             "D2",                      # Deprivation index 2 (2 dimensions)
-                             "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                     # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],           # Population density
-                             ["HH_cars_0",              # N of HH with 0 cars
-                             "HH_cars_1",               # N of HH with 1 car
-                             "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],             # N of HH with 3+ cars
-                             ["HHT_rent_free",          # N of HH living rent-free
-                             "HHT_owned_outright",      # N of HH owning outright
-                             "HHT_owned_mortgage",      # N of HH owning with mortgage
-                             "HHT_rented_other",        # N of HH renting from other private landlords
-                             "HHT_rented_private",      # N of HH renting from private landlords
-                             "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],      # N of HH renting from social landlords
-                             ["Acc_detached",           # N of HH living in detached houses
-                             "Acc_caravan",             # N of HH living in caravans
-                             "Acc_commercial",          # N of HH living in commercial buildings
-                             "Acc_flat",                # N of HH living in flats
-                             "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                             "Acc_converted_other",     # N of HH living in other converted buildings
-                             "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]           # N of HH living in terraced houses
+    independent_variables = [["EVCI2021"],            # EVCI 2021
+                             ["Med_HP_2021",          # Median house prices 2021 (December)
+                              "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                              "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "Pop_density",          # Population density
+                              "HH_cars_0_1",          # N of HH with 0 or 1 car
+                              "HH_cars_2+",           # N of HH with 2+ cars
+                              "HHT_owned",            # N of HH owning outright + mortgage + shared ownership
+                              "HHT_rented",           # N of HH renting
+                              "Acc_detached_semidet", # N of HH living in detached and semidetached houses
+                              "Acc_flat",             # N of HH living in flats
+                              "Acc_terraced"]]        # N of HH living in terraced houses
 
     demand_summary_table_21 = normalise_and_run_OLS(["EVCI2021"], normalise_dependent_variables, normalise_independent_variables)
     # save the summary table
@@ -514,36 +544,18 @@ if OLS_2021_2024_flag == True:
     # __________________________________________________________________________________________________________________
     # OLS for ACCESSIBILITY 2021
     dependent_variable = "accessibility_21"
-    independent_variables = [["Med_HP_2021"],           # Median house prices 2021 (December)
-                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
-                             "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                             "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                     # Deprivation index 0 (no dimensions)
-                             "D1",                      # Deprivation index 1 (1 dimension)
-                             "D2",                      # Deprivation index 2 (2 dimensions)
-                             "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                     # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],           # Population density
-                             ["HH_cars_0",              # N of HH with 0 cars
-                             "HH_cars_1",               # N of HH with 1 car
-                             "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],             # N of HH with 3+ cars
-                             ["HHT_rent_free",          # N of HH living rent-free
-                             "HHT_owned_outright",      # N of HH owning outright
-                             "HHT_owned_mortgage",      # N of HH owning with mortgage
-                             "HHT_rented_other",        # N of HH renting from other private landlords
-                             "HHT_rented_private",      # N of HH renting from private landlords
-                             "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],      # N of HH renting from social landlords
-                             ["Acc_detached",           # N of HH living in detached houses
-                             "Acc_caravan",             # N of HH living in caravans
-                             "Acc_commercial",          # N of HH living in commercial buildings
-                             "Acc_flat",                # N of HH living in flats
-                             "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                             "Acc_converted_other",     # N of HH living in other converted buildings
-                             "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]           # N of HH living in terraced houses
+    independent_variables = [["Med_HP_2021",          # Median house prices 2021 (December)
+                              "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                              "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "Pop_density",          # Population density
+                              "HH_cars_0_1",          # N of HH with 0 or 1 car
+                              "HH_cars_2+",           # N of HH with 2+ cars
+                              "HHT_owned",            # N of HH owning outright + mortgage + shared ownership
+                              "HHT_rented",           # N of HH renting
+                              "Acc_detached_semidet", # N of HH living in detached and semidetached houses
+                              "Acc_flat",             # N of HH living in flats
+                              "Acc_terraced"]]        # N of HH living in terraced houses
 
     accessibility_summary_table_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
     # save the summary table
@@ -552,37 +564,19 @@ if OLS_2021_2024_flag == True:
     # __________________________________________________________________________________________________________________
     # OLS for SUPPLY 2024
     dependent_variable = "EVCI2024"
-    independent_variables = [["y2024Q2"],               # EV licensing 2024 (June)
-                             ["Med_HP_2023"],           # Median house prices 2023 (March)
-                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
-                             "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                             "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                     # Deprivation index 0 (no dimensions)
-                             "D1",                      # Deprivation index 1 (1 dimension)
-                             "D2",                      # Deprivation index 2 (2 dimensions)
-                             "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                     # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],           # Population density
-                             ["HH_cars_0",              # N of HH with 0 cars
-                             "HH_cars_1",               # N of HH with 1 car
-                             "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],             # N of HH with 3+ cars
-                             ["HHT_rent_free",          # N of HH living rent-free
-                             "HHT_owned_outright",      # N of HH owning outright
-                             "HHT_owned_mortgage",      # N of HH owning with mortgage
-                             "HHT_rented_other",        # N of HH renting from other private landlords
-                             "HHT_rented_private",      # N of HH renting from private landlords
-                             "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],      # N of HH renting from social landlords
-                             ["Acc_detached",           # N of HH living in detached houses
-                             "Acc_caravan",             # N of HH living in caravans
-                             "Acc_commercial",          # N of HH living in commercial buildings
-                             "Acc_flat",                # N of HH living in flats
-                             "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                             "Acc_converted_other",     # N of HH living in other converted buildings
-                             "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]           # N of HH living in terraced houses
+    independent_variables = [["y2024Q2"],             # EV licensing 2024 (June)
+                             ["Med_HP_2023",          # Median house prices 2021 (December)
+                              "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                              "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "Pop_density",          # Population density
+                              "HH_cars_0_1",          # N of HH with 0 or 1 car
+                              "HH_cars_2+",           # N of HH with 2+ cars
+                              "HHT_owned",            # N of HH owning outright + mortgage + shared ownership
+                              "HHT_rented",           # N of HH renting
+                              "Acc_detached_semidet", # N of HH living in detached and semidetached houses
+                              "Acc_flat",             # N of HH living in flats
+                              "Acc_terraced"]]        # N of HH living in terraced houses
 
     supply_summary_table_24 = normalise_and_run_OLS(["y2024Q2"], normalise_dependent_variables, normalise_independent_variables)
 
@@ -592,37 +586,19 @@ if OLS_2021_2024_flag == True:
     # __________________________________________________________________________________________________________________
     # OLS for DEMAND 2024
     dependent_variable = "y2024Q2"
-    independent_variables = [["EVCI2024"],              # EVCI 2024
-                             ["Med_HP_2023"],           # Median house prices 2023 (March)
-                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
-                             "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                             "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                     # Deprivation index 0 (no dimensions)
-                             "D1",                      # Deprivation index 1 (1 dimension)
-                             "D2",                      # Deprivation index 2 (2 dimensions)
-                             "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                     # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],           # Population density
-                             ["HH_cars_0",              # N of HH with 0 cars
-                             "HH_cars_1",               # N of HH with 1 car
-                             "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],             # N of HH with 3+ cars
-                             ["HHT_rent_free",          # N of HH living rent-free
-                             "HHT_owned_outright",      # N of HH owning outright
-                             "HHT_owned_mortgage",      # N of HH owning with mortgage
-                             "HHT_rented_other",        # N of HH renting from other private landlords
-                             "HHT_rented_private",      # N of HH renting from private landlords
-                             "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],      # N of HH renting from social landlords
-                             ["Acc_detached",           # N of HH living in detached houses
-                             "Acc_caravan",             # N of HH living in caravans
-                             "Acc_commercial",          # N of HH living in commercial buildings
-                             "Acc_flat",                # N of HH living in flats
-                             "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                             "Acc_converted_other",     # N of HH living in other converted buildings
-                             "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]           # N of HH living in terraced houses
+    independent_variables = [["EVCI2024"],            # EVCI 2024
+                             ["Med_HP_2023",          # Median house prices 2021 (December)
+                              "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                              "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "Pop_density",          # Population density
+                              "HH_cars_0_1",          # N of HH with 0 or 1 car
+                              "HH_cars_2+",           # N of HH with 2+ cars
+                              "HHT_owned",            # N of HH owning outright + mortgage + shared ownership
+                              "HHT_rented",           # N of HH renting
+                              "Acc_detached_semidet", # N of HH living in detached and semidetached houses
+                              "Acc_flat",             # N of HH living in flats
+                              "Acc_terraced"]]        # N of HH living in terraced houses
 
     demand_summary_table_24 = normalise_and_run_OLS(["EVCI2024"], normalise_dependent_variables, normalise_independent_variables)
 
@@ -632,36 +608,18 @@ if OLS_2021_2024_flag == True:
     # __________________________________________________________________________________________________________________
     # OLS for ACCESSIBILITY 2024
     dependent_variable = "accessibility_24"
-    independent_variables = [["Med_HP_2023"],           # Median house prices 2023 (March)
-                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
-                             "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                             "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                     # Deprivation index 0 (no dimensions)
-                             "D1",                      # Deprivation index 1 (1 dimension)
-                             "D2",                      # Deprivation index 2 (2 dimensions)
-                             "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                     # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],           # Population density
-                             ["HH_cars_0",              # N of HH with 0 cars
-                             "HH_cars_1",               # N of HH with 1 car
-                             "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],             # N of HH with 3+ cars
-                             ["HHT_rent_free",          # N of HH living rent-free
-                             "HHT_owned_outright",      # N of HH owning outright
-                             "HHT_owned_mortgage",      # N of HH owning with mortgage
-                             "HHT_rented_other",        # N of HH renting from other private landlords
-                             "HHT_rented_private",      # N of HH renting from private landlords
-                             "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],      # N of HH renting from social landlords
-                             ["Acc_detached",           # N of HH living in detached houses
-                             "Acc_caravan",             # N of HH living in caravans
-                             "Acc_commercial",          # N of HH living in commercial buildings
-                             "Acc_flat",                # N of HH living in flats
-                             "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                             "Acc_converted_other",     # N of HH living in other converted buildings
-                             "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]           # N of HH living in terraced houses
+    independent_variables = [["Med_HP_2023",          # Median house prices 2021 (December)
+                              "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                              "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "Pop_density",          # Population density
+                              "HH_cars_0_1",          # N of HH with 0 or 1 car
+                              "HH_cars_2+",           # N of HH with 2+ cars
+                              "HHT_owned",            # N of HH owning outright + mortgage + shared ownership
+                              "HHT_rented",           # N of HH renting
+                              "Acc_detached_semidet", # N of HH living in detached and semidetached houses
+                              "Acc_flat",             # N of HH living in flats
+                              "Acc_terraced"]]        # N of HH living in terraced houses
 
     accessibility_summary_table_24 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
 
@@ -671,91 +629,32 @@ if OLS_2021_2024_flag == True:
     # __________________________________________________________________________________________________________________
     # OLS for ACCESSIBILITY DIFFERENCE 2024-2021
     dependent_variable = "acc_diff_24_21"
-    independent_variables = [["Med_HP_2021",            # Median house prices 2021 (December)
-                             "Med_HP_2023"],            # Median house prices 2023 (March)
-                             ["ASG_AB",                 # Approx social grade (higher and intermediate occ.)
-                             "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                             "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                             "ASG_DE"],                 # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             ["D0",                     # Deprivation index 0 (no dimensions)
-                             "D1",                      # Deprivation index 1 (1 dimension)
-                             "D2",                      # Deprivation index 2 (2 dimensions)
-                             "D3",                      # Deprivation index 3 (3 dimensions)
-                             "D4"],                     # Deprivation index 4 (4 dimensions)
-                             ["Pop_density"],           # Population density
-                             ["HH_cars_0",              # N of HH with 0 cars
-                             "HH_cars_1",               # N of HH with 1 car
-                             "HH_cars_2",               # N of HH with 2 cars
-                             "HH_cars_3+"],             # N of HH with 3+ cars
-                             ["HHT_rent_free",          # N of HH living rent-free
-                             "HHT_owned_outright",      # N of HH owning outright
-                             "HHT_owned_mortgage",      # N of HH owning with mortgage
-                             "HHT_rented_other",        # N of HH renting from other private landlords
-                             "HHT_rented_private",      # N of HH renting from private landlords
-                             "HHT_shared_ownership",    # N of HH in shared ownership
-                             "HHT_rented_social"],      # N of HH renting from social landlords
-                             ["Acc_detached",           # N of HH living in detached houses
-                             "Acc_caravan",             # N of HH living in caravans
-                             "Acc_commercial",          # N of HH living in commercial buildings
-                             "Acc_flat",                # N of HH living in flats
-                             "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                             "Acc_converted_other",     # N of HH living in other converted buildings
-                             "Acc_semidetached",        # N of HH living in semi-detached houses
-                             "Acc_terraced"]]           # N of HH living in terraced houses
+    independent_variables = [["Med_HP_2023",          # Median house prices 2021 (December)
+                              "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                              "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "Pop_density",          # Population density
+                              "HH_cars_0_1",          # N of HH with 0 or 1 car
+                              "HH_cars_2+",           # N of HH with 2+ cars
+                              "HHT_owned",            # N of HH owning outright + mortgage + shared ownership
+                              "HHT_rented",           # N of HH renting
+                              "Acc_detached_semidet", # N of HH living in detached and semidetached houses
+                              "Acc_flat",             # N of HH living in flats
+                              "Acc_terraced"]]        # N of HH living in terraced houses
 
     acc_diff_summary_table_24_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
 
     # save the summary table
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
 
-    # __________________________________________________________________________________________________________________
-    # OLS for ACCESSIBILITY DIFFERENCE 2024-2021 - SINGLE MODEL (all variables together)
-    dependent_variable = "acc_diff_24_21"
-    independent_variables = ["ASG_AB",  # Approx social grade (higher and intermediate occ.)
-                              "ASG_C1",  # Approx social grade (Supervisory and junior managerial  occ.)
-                              "ASG_C2",  # Approx social grade (Skilled manual occ.)
-                              "ASG_DE",  # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                             #"Med_HP_2021",  # Median house prices 2021 (December)
-                             #"Med_HP_2023",  # Median house prices 2023 (March)
-                             "D0",  # Deprivation index 0 (no dimensions)
-                              "D1",  # Deprivation index 1 (1 dimension)
-                              "D2",  # Deprivation index 2 (2 dimensions)
-                              "D3",  # Deprivation index 3 (3 dimensions)
-                              "D4",  # Deprivation index 4 (4 dimensions)
-                             "Pop_density",  # Population density
-                             "HH_cars_0",  # N of HH with 0 cars
-                              "HH_cars_1",  # N of HH with 1 car
-                              "HH_cars_2",  # N of HH with 2 cars
-                              "HH_cars_3+",  # N of HH with 3+ cars
-                             "HHT_rent_free",  # N of HH living rent-free
-                              "HHT_owned_outright",  # N of HH owning outright
-                              "HHT_owned_mortgage",  # N of HH owning with mortgage
-                              "HHT_rented_other",  # N of HH renting from other private landlords
-                              "HHT_rented_private",  # N of HH renting from private landlords
-                              "HHT_shared_ownership",  # N of HH in shared ownership
-                              "HHT_rented_social",  # N of HH renting from social landlords
-                             "Acc_detached",  # N of HH living in detached houses
-                              "Acc_caravan",  # N of HH living in caravans
-                              "Acc_commercial",  # N of HH living in commercial buildings
-                              "Acc_flat",  # N of HH living in flats
-                              "Acc_converted_or_shared",  # N of HH living in converted or shared houses
-                              "Acc_converted_other",  # N of HH living in other converted buildings
-                              "Acc_semidetached",  # N of HH living in semi-detached houses
-                              "Acc_terraced"]  # N of HH living in terraced houses
-
-    acc_diff_summary_table_24_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
-
-    # save the summary table
-    acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24_single_model"], index=False)
-
 ########################################################################################################################
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GRW_flag = False
+GRW_flag = True
 # Normalisation options:
-normalise_dependent_variables = True
-normalise_independent_variables = True
+normalise_dependent_variables = False
+normalise_independent_variables = False
 
 # borough boundaries
 lsoa_gdf = gpd.read_file(inputs["London_LSOA_polygons"])
@@ -799,35 +698,18 @@ if GRW_flag == True:
                          "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
 
     cat_indep_variables = ["Med_HP_2021",             # Median house prices 2021 (December)
-                           "ASG_AB",                  # Approx social grade (higher and intermediate occ.)
-                           "ASG_C1",                  # Approx social grade (Supervisory and junior managerial  occ.)
-                           "ASG_C2",                  # Approx social grade (Skilled manual occ.)
-                           "ASG_DE",                  # Approx social grade (Semi-skilled, unempl., lowest grade occ.)
-                           "D0",                      # Deprivation index 0 (no dimensions)
-                           "D1",                      # Deprivation index 1 (1 dimension)
-                           "D2",                      # Deprivation index 2 (2 dimensions)
-                           "D3",                      # Deprivation index 3 (3 dimensions)
-                           "D4",                      # Deprivation index 4 (4 dimensions)
+                           #"Med_HP_2023",             # Median house prices 2023 (March)
+                           "ASG_AB_C1",               # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
+                           "ASG_C2_DE",               # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
+                           "D2+",                     # Deprivation index: n of HH deprived in 2+ dimensions
                            "Pop_density",             # Population density
-                           "HH_cars_0",               # N of HH with 0 cars
-                           "HH_cars_1",               # N of HH with 1 car
-                           "HH_cars_2",               # N of HH with 2 cars
-                           "HH_cars_3+",              # N of HH with 3+ cars
-                           "HHT_rent_free",           # N of HH living rent-free
-                           "HHT_owned_outright",      # N of HH owning outright
-                           "HHT_owned_mortgage",      # N of HH owning with mortgage
-                           "HHT_rented_other",        # N of HH renting from other private landlords
-                           "HHT_rented_private",      # N of HH renting from private landlords
-                           "HHT_shared_ownership",    # N of HH in shared ownership
-                           "HHT_rented_social",       # N of HH renting from social landlords
-                           "Acc_detached",            # N of HH living in detached houses
-                           "Acc_caravan",             # N of HH living in caravans
-                           "Acc_commercial",          # N of HH living in commercial buildings
+                           "HH_cars_0_1",             # N of HH with 0 or 1 car
+                           "HH_cars_2+",              # N of HH with 2+ cars
+                           "HHT_owned",               # N of HH owning outright + mortgage + shared ownership
+                           "HHT_rented",              # N of HH renting
+                           "Acc_detached_semidet",    # N of HH living in detached and semidetached houses
                            "Acc_flat",                # N of HH living in flats
-                           "Acc_converted_or_shared", # N of HH living in converted or shared houses
-                           "Acc_converted_other",     # N of HH living in other converted buildings
-                           "Acc_semidetached",        # N of HH living in semi-detached houses
-                           "Acc_terraced"]            # N of HH living in terraced houses
+                           "Acc_terraced"]            # N of HH living in terraced
 
     if normalise_dependent_variables == True:
         for i in cat_dep_variables:
@@ -982,7 +864,6 @@ if GRW_flag == True:
                 plt.savefig("./output-data/GWR-results/GWR_coeff_" + dep + "_" + labels[param] + ".png")
                 #plt.show()
 
-
 quick_GWR_single_flag = False
 if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dependent variable
     endog = analysis_21_24.EVCI2021.values.reshape(-1, 1)
@@ -1044,7 +925,7 @@ if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dep
     fig.colorbar(sm, cax=cax)
     _ = ax.axis('off')
 
-    plt.show()
+    #plt.show()
 
     labels = ['Intercept', 'Med_HP_2021', 'Pop_density']
 
@@ -1080,11 +961,11 @@ if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dep
         fig.colorbar(sm, cax=cax)
         _ = ax.axis('off')
 
-        plt.show()
+        #plt.show()
 
 ########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
-calculate_Gini_flag = False
+calculate_Gini_flag = True
 
 if calculate_Gini_flag == True:
     # Load the accessibility data, make them numpy arrays
@@ -1161,3 +1042,4 @@ if calculate_Gini_flag == True:
     print(f"Gini Index for 2024: {gini_2024}")
 
 ########################################################################################################################
+
