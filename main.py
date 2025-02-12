@@ -788,7 +788,7 @@ if GRW_flag == True:
         _ = ax.axis('off')
 
         # Save the figure
-        plt.savefig("./output-data/GWR-results/GWR_R2_" + dep + ".png")
+        plt.savefig("./output-data/GWR-results/PNG/GWR_R2_" + dep + ".png")
         #plt.show()
 
         # copy the independent variables into a new list
@@ -861,8 +861,11 @@ if GRW_flag == True:
                 _ = ax.axis('off')
 
                 # Save the figure
-                plt.savefig("./output-data/GWR-results/GWR_coeff_" + dep + "_" + labels[param] + ".png")
+                plt.savefig("./output-data/GWR-results/PNG/GWR_coeff_" + dep + "_" + labels[param] + ".png")
                 #plt.show()
+
+                # Save the results to a shp file
+                analysis_21_24.to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + ".shp")
 
 quick_GWR_single_flag = False
 if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dependent variable
@@ -965,7 +968,7 @@ if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dep
 
 ########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
-calculate_Gini_flag = True
+calculate_Gini_flag = False
 
 if calculate_Gini_flag == True:
     # Load the accessibility data, make them numpy arrays
