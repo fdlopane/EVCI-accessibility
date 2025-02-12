@@ -651,7 +651,7 @@ if OLS_2021_2024_flag == True:
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GRW_flag = True
+GWR_flag = True
 # Normalisation options:
 normalise_dependent_variables = False
 normalise_independent_variables = False
@@ -669,7 +669,7 @@ def lsoa_boundaries(ax):
             alpha=.5,
             zorder=1)
 
-if GRW_flag == True:
+if GWR_flag == True:
     London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
     # Now use the polygons geometry for the analysis_21_24 dataframe
     analysis_21_24 = analysis_21_24.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
@@ -808,7 +808,7 @@ if GRW_flag == True:
                                        dpi=100,
                                        subplot_kw=dict(aspect='equal'))
 
-                # add local coefficients to df
+                # add local coefficients to df using independent variable name:
                 analysis_21_24[str(param)] = results.params[:, param]
 
                 # Compute value ranges only for significant areas
@@ -860,12 +860,17 @@ if GRW_flag == True:
 
                 _ = ax.axis('off')
 
+                # Add tvales as a column to the dataframe
+                analysis_21_24['tvalues_' + str(param)] = results.tvalues[:, param]
+
+
                 # Save the figure
                 plt.savefig("./output-data/GWR-results/PNG/GWR_coeff_" + dep + "_" + labels[param] + ".png")
                 #plt.show()
 
-                # Save the results to a shp file
-                analysis_21_24.to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + ".shp")
+                # Save the results to a shp file masking the significant areas
+                analysis_21_24[significant_mask].to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + "_" + labels[param] + ".shp")
+                #analysis_21_24.to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + ".shp")
 
 quick_GWR_single_flag = False
 if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dependent variable
