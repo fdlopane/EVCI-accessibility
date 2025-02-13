@@ -863,13 +863,12 @@ if GWR_flag == True:
                 # Add tvales as a column to the dataframe
                 analysis_21_24['tvalues_' + str(param)] = results.tvalues[:, param]
 
-
                 # Save the figure
                 plt.savefig("./output-data/GWR-results/PNG/GWR_coeff_" + dep + "_" + labels[param] + ".png")
                 #plt.show()
 
                 # Save the results to a shp file masking the significant areas
-                analysis_21_24[significant_mask].to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + "_" + labels[param] + ".shp")
+                analysis_21_24[significant_mask].to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + "_" + str(param) + "_" + labels[param] + ".shp")
                 #analysis_21_24.to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + ".shp")
 
 quick_GWR_single_flag = False
