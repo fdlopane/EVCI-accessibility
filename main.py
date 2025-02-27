@@ -689,10 +689,11 @@ if GWR_flag == True:
     analysis_21_24["y"] = analysis_21_24.centroid.y
 
     # categorise the variables in dependent and independent variables and save the categorisation into two lists:
-    cat_dep_variables = ["EVCI2021",         # EVCI 2021
-                         "y2021Q4",          # EV licensing 2021
-                         "EVCI2024",         # EVCI 2024
-                         "y2024Q2",          # EV licensing 2024
+    cat_dep_variables = [
+                         #"EVCI2021",         # EVCI 2021
+                         #"y2021Q4",          # EV licensing 2021
+                         #"EVCI2024",         # EVCI 2024
+                         #"y2024Q2",          # EV licensing 2024
                          "accessibility_21", # Accessibility 2021
                          "accessibility_24", # Accessibility 2024
                          "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
@@ -790,6 +791,9 @@ if GWR_flag == True:
         # Save the figure
         plt.savefig("./output-data/GWR-results/PNG/GWR_R2_" + dep + ".png")
         #plt.show()
+
+        # Also save the localR2 as a shp file:
+        analysis_21_24['localR2'].to_file("./output-data/GWR-results/SHP/GWR_R2_" + dep + "_" + ".shp")
 
         # copy the independent variables into a new list
         labels = cat_indep_variables.copy()
