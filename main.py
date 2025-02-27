@@ -792,8 +792,30 @@ if GWR_flag == True:
         plt.savefig("./output-data/GWR-results/PNG/GWR_R2_" + dep + ".png")
         #plt.show()
 
-        # Also save the localR2 as a shp file:
-        analysis_21_24['localR2'].to_file("./output-data/GWR-results/SHP/GWR_R2_" + dep + "_" + ".shp")
+        # create a gdf with the local R2 values
+        analysis_21_24_R2 = analysis_21_24[['LSOA21CD',
+                                            'LSOA21NM',
+                                            'ASG_AB_C1',
+                                            'ASG_C2_DE',
+                                            'D2+',
+                                            'HH_cars_0_1',
+                                            'HH_cars_2+',
+                                            'HHT_owned',
+                                            'HHT_rented',
+                                            'Acc_detached_semidet',
+                                            'Acc_other',
+                                            'geometry',
+                                            'x',
+                                            'y',
+                                            'localR2']]
+
+        # rename the coloumns with names shorter than 10 characters
+        analysis_21_24_R2.rename(columns={"HH_cars_0_1": "HH_cars_01",
+                                          "Acc_detached_semidet": "det_semidt"},
+                                 inplace=True)
+
+        # Save the results to a shp file
+        analysis_21_24_R2.to_file("./output-data/GWR-results/SHP/GWR_R2_" + dep + "_" + ".shp")
 
         # copy the independent variables into a new list
         labels = cat_indep_variables.copy()
