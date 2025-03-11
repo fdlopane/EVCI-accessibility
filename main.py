@@ -9,6 +9,8 @@ started coding: October 2024
 
 import pandas as pd
 import geopandas as gpd
+from duckdb import values
+
 from config import *
 import statsmodels
 import statsmodels.api as sm
@@ -364,7 +366,8 @@ analysis_21_24["HHT_rented"] = (analysis_21_24["HHT_rented_other"]
 
 # Accommodation type
 analysis_21_24["Acc_detached_semidet"] = (analysis_21_24["Acc_detached"]
-                                               + analysis_21_24["Acc_semidetached"])
+                                            + analysis_21_24["Acc_semidetached"])
+
 analysis_21_24["Acc_flat"] = (analysis_21_24["Acc_flat"]
                               + analysis_21_24["Acc_converted_or_shared"]
                               + analysis_21_24["Acc_converted_other"])
@@ -455,7 +458,7 @@ if CSCA_2021_2024_flag == True:
     plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
-OLS_2021_2024_flag = True
+OLS_2021_2024_flag = False
 # Normalisation options:
 #normalise_dependent_variables = False
 #normalise_independent_variables = False
@@ -766,6 +769,13 @@ def lsoa_boundaries(ax):
             alpha=.5,
             zorder=1)
 
+# For GWR analysis:
+# dependent variables: take the inverse hyperbolic sine transformation (because they have 0 and negative values)
+Regression_21_24["accessibility_21_arcsinh"] = np.arcsinh(Regression_21_24["accessibility_21"])
+Regression_21_24["accessibility_24_arcsinh"] = np.arcsinh(Regression_21_24["accessibility_24"])
+Regression_21_24["acc_diff_24_21_arcsinh"] = np.arcsinh(Regression_21_24["acc_diff_24_21"])
+
+
 if GWR_flag == True:
     London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
     # Now use the polygons geometry for the Regression_21_24 dataframe
@@ -791,23 +801,26 @@ if GWR_flag == True:
                          #"y2021Q4",          # EV licensing 2021
                          #"EVCI2024",         # EVCI 2024
                          #"y2024Q2",          # EV licensing 2024
-                         "accessibility_21", # Accessibility 2021
-                         "accessibility_24", # Accessibility 2024
-                         "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
+                         #"accessibility_21", # Accessibility 2021
+                         #"accessibility_24", # Accessibility 2024
+                         #"acc_diff_24_21",   # Accessibility difference 2024 - 2021
+                         "accessibility_21_arcsinh",
+                         "accessibility_24_arcsinh",
+                         "acc_diff_24_21_arcsinh"]
 
-    cat_indep_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
-                           #"s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+    cat_indep_variables = [#"s-ASG_ABC1",        # Share of HH in social grade AB and C1
+                           "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
                            "s-D3+",             # Share of HH deprived in 3+ dimensions
-                           #"s-HHcars_01",      # Share of HH with 0 or 1 car
-                           "s-HHcars_2+",       # Share of HH with 2+ cars
-                           "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
-                           #"s-HHT_rented",     # share of HH renting
-                           "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
-                           "s-Acc_flat",        # Share of HH living in flats
-                           "s-Acc_other",       # Share of HH living in terraced & other houses
+                           "s-HHcars_01",      # Share of HH with 0 or 1 car
+                           #"s-HHcars_2+",       # Share of HH with 2+ cars
+                           #"s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                           "s-HHT_rented"]     # share of HH renting
+                           #"s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                           #"s-Acc_flat",        # Share of HH living in flats
+                           #"s-Acc_other",       # Share of HH living in terraced & other houses
                            #"Med_HP_2021",      # Median house prices 2021 (December)
-                           "Med_HP_2023",       # Median house prices 2023 (March)
-                           "Pop_density"]       # Population density (thousands)
+                           #"Med_HP_2023",       # Median house prices 2023 (March)
+                           #"Pop_density"]       # Population density (thousands)
 
     ''' # if considering total counts instead of shares:        
                            "Med_HP_2021",             # Median house prices 2021 (December)
@@ -919,7 +932,11 @@ if GWR_flag == True:
                                                 "s-Acc_other",
                                                 # "Med_HP_2021",
                                                 "Med_HP_2023",
-                                                "Pop_density"]]
+                                                "Pop_density",
+                                                "geometry",
+                                                "x",
+                                                "y",
+                                                "localR2"]]
 
         ''' # if considering total counts instead of shares:  
                                             'ASG_AB_C1',
@@ -937,9 +954,10 @@ if GWR_flag == True:
                                             'localR2']]
         '''
 
-        # rename the coloumns with names shorter than 10 characters
-        Regression_21_24_R2.rename(columns={"HH_cars_0_1": "HH_cars_01",
-                                          "Acc_detached_semidet": "det_semidt"},
+        # rename the columns with names shorter than 10 characters
+        Regression_21_24_R2.rename(columns={"s-HHcars_2+": "s-HHcars2+",
+                                            "s-Acc_det-semidet": "det_semidt",
+                                            "Med_HP_2023": "Med_HP_23"},
                                  inplace=True)
 
         # Save the results to a shp file
@@ -1026,8 +1044,43 @@ if GWR_flag == True:
                 #Regression_21_24.to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + ".shp")
 
 ########################################################################################################################
+# Check the distribution of the dependent variables
+check_distribution_flag = False
+variables_to_test = Regression_21_24[["accessibility_21_arcsinh",
+                                      "accessibility_24_arcsinh",
+                                      "acc_diff_24_21_arcsinh"]]   # Accessibility difference 2024 - 2021
+
+# plot the distribution of the dependent variables without using sns
+if check_distribution_flag == True:
+    for var in variables_to_test:
+        plt.figure(figsize=(8, 6))
+        plt.hist(Regression_21_24[var], bins=30, color='blue', alpha=0.7)
+        plt.title(f"Distribution of {var}")
+        plt.xlabel(var)
+        plt.ylabel("Frequency")
+        plt.grid()
+        plt.show()
+
+# Check normality of the dependent variables
+check_normality_flag = False
+if check_normality_flag == True:
+    from scipy import stats
+    for var in variables_to_test:
+        # Shapiro-Wilk test for normality
+        stat, p = stats.shapiro(Regression_21_24[var])
+        print("--------------------------------------------")
+        print(f"Shapiro-Wilk test for normality for {var}:")
+        print(f"Statistics={stat:.3f}, p={p:.3f}")
+        # Interpret
+        alpha = 0.05
+        if p > alpha:
+            print(f"{var} sample looks Gaussian (fail to reject H0)")
+        else:
+            print(f"{var} sample does not look Gaussian (reject H0)")
+
+########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
-calculate_Gini_flag = False
+calculate_Gini_flag = True
 
 if calculate_Gini_flag == True:
     # Load the accessibility data, make them numpy arrays
@@ -1104,4 +1157,3 @@ if calculate_Gini_flag == True:
     print(f"Gini Index for 2024: {gini_2024}")
 
 ########################################################################################################################
-
