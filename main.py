@@ -155,7 +155,7 @@ if not os.path.exists(generated["Mean_house_prices_London"]):
     HP_London.rename(columns={"LSOA code": "LSOA21CD"}, inplace=True)
     HP_London.to_csv(generated["Mean_house_prices_London"], index=False)
 
-# Fitler out London from GB median house prices
+# Filter out London from GB median house prices
 if not os.path.exists(generated["Median_house_prices_London"]):
     MP_GB = pd.read_csv(inputs["Median_house_prices_GB"])
     MP_GB = MP_GB[["Local authority code", "Local authority name", "LSOA code", "LSOA name", "Year ending Dec 2021", "Year ending Mar 2023"]]
@@ -240,7 +240,7 @@ Population_density_GB = pd.read_csv(inputs["Population_density_GB"])
 Population_density_London = Population_density_GB[Population_density_GB["LSOA21CD"].isin(London_LSOA_codes)]
 Population_density_London = Population_density_London[["LSOA21CD", "People per Sq Km"]]
 Population_density_London.rename(columns={"People per Sq Km": "Pop_density"}, inplace=True)
-# Remove commes "," in the field to turn the Population density to float
+# Remove commas "," in the field to turn the Population density to float
 Population_density_London["Pop_density"] = Population_density_London["Pop_density"].str.replace(",", "")
 Population_density_London["Pop_density"] = Population_density_London["Pop_density"].astype(float)
 analysis_21_24 = analysis_21_24.merge(Population_density_London, on="LSOA21CD", how="outer")
@@ -333,9 +333,8 @@ analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] - analysis
 
 # Reduce the number of variables by collapsing some of them
 '''
-TODO: Variables to be created:
 - Approx social grade (ASG): combine the 4 categories into 2: AB and CDE
-- Deprivation index: only keep 2+ dimensions (in a single variable)
+- Deprivation index: only keep 3+ dimensions (in a single variable)
 - Vehicle ownership: combine the 4 categories into 2: 0-1 cars and 2+ cars
 - House tenure: combine the 8 categories into 3: owned, rented, and other
 - Accommodation type: combine the 8 categories into 3: detached+semidetached, flat, and other
@@ -346,7 +345,8 @@ analysis_21_24["ASG_AB_C1"] = analysis_21_24["ASG_AB"] + analysis_21_24["ASG_C1"
 analysis_21_24["ASG_C2_DE"] = analysis_21_24["ASG_C2"] + analysis_21_24["ASG_DE"]
 
 # Deprivation index
-analysis_21_24["D2+"] = analysis_21_24["D2"] + analysis_21_24["D3"] + analysis_21_24["D4"]
+#analysis_21_24["D2+"] = analysis_21_24["D2"] + analysis_21_24["D3"] + analysis_21_24["D4"]
+analysis_21_24["D3+"] = analysis_21_24["D3"] + analysis_21_24["D4"]
 
 # Vehicle ownership
 analysis_21_24["HH_cars_0_1"] = analysis_21_24["HH_cars_0"] + analysis_21_24["HH_cars_1"]
@@ -399,11 +399,11 @@ print("Accessibility 2024: ", analysis_21_24["accessibility_24"].min(), analysis
 print("Accessibility difference 2024-2021: ", analysis_21_24["acc_diff_24_21"].min(), analysis_21_24["acc_diff_24_21"].max())
 '''
 
-thousands_flag = True
+thousands_flag = False
 if thousands_flag == True:
     analysis_21_24["ASG_AB_C1"] = analysis_21_24["ASG_AB_C1"] / 1000
     analysis_21_24["ASG_C2_DE"] = analysis_21_24["ASG_C2_DE"] / 1000
-    analysis_21_24["D2+"] = analysis_21_24["D2+"] / 1000
+    analysis_21_24["D3+"] = analysis_21_24["D2+"] / 1000
     analysis_21_24["Pop_density"] = analysis_21_24["Pop_density"] / 1000
     analysis_21_24["HH_cars_0_1"] = analysis_21_24["HH_cars_0_1"] / 1000
     analysis_21_24["HH_cars_2+"] = analysis_21_24["HH_cars_2+"] / 1000
@@ -412,43 +412,93 @@ if thousands_flag == True:
     analysis_21_24["Acc_detached_semidet"] = analysis_21_24["Acc_detached_semidet"] / 1000
     analysis_21_24["Acc_flat"] = analysis_21_24["Acc_flat"] / 1000
     analysis_21_24["Acc_other"] = analysis_21_24["Acc_other"] / 1000
-    analysis_21_24["Acc_terraced"] = analysis_21_24["Acc_terraced"] / 1000
+
+# Create variables containing shares instead of absolute numbers
+var_shares_flag = True
+if var_shares_flag == True:
+    analysis_21_24["s-ASG_ABC1"] = analysis_21_24["ASG_AB_C1"] / (analysis_21_24["ASG_AB_C1"] + analysis_21_24["ASG_C2_DE"])
+    analysis_21_24["s-ASG_C2DE"] = analysis_21_24["ASG_C2_DE"] / (analysis_21_24["ASG_AB_C1"] + analysis_21_24["ASG_C2_DE"])
+    analysis_21_24["s-D3+"] = analysis_21_24["D3+"] / (analysis_21_24["D3+"] + analysis_21_24["D0"] + analysis_21_24["D1"] + analysis_21_24["D2"])
+    analysis_21_24["s-HHcars_01"] = analysis_21_24["HH_cars_0_1"] / (analysis_21_24["HH_cars_0_1"] + analysis_21_24["HH_cars_2+"])
+    analysis_21_24["s-HHcars_2+"] = analysis_21_24["HH_cars_2+"] / (analysis_21_24["HH_cars_0_1"] + analysis_21_24["HH_cars_2+"])
+    analysis_21_24["s-HHT_owned"] = analysis_21_24["HHT_owned"] / (analysis_21_24["HHT_owned"] + analysis_21_24["HHT_rented"])
+    analysis_21_24["s-HHT_rented"] = analysis_21_24["HHT_rented"] / (analysis_21_24["HHT_owned"] + analysis_21_24["HHT_rented"])
+    analysis_21_24["s-Acc_det-semidet"] = analysis_21_24["Acc_detached_semidet"] / (analysis_21_24["Acc_detached_semidet"] + analysis_21_24["Acc_flat"] + analysis_21_24["Acc_other"])
+    analysis_21_24["s-Acc_flat"] = analysis_21_24["Acc_flat"] / (analysis_21_24["Acc_detached_semidet"] + analysis_21_24["Acc_flat"] + analysis_21_24["Acc_other"])
+    analysis_21_24["s-Acc_other"] = analysis_21_24["Acc_other"] / (analysis_21_24["Acc_detached_semidet"] + analysis_21_24["Acc_flat"] + analysis_21_24["Acc_other"])
+
+# Create a df with only the variables for the OLS and GWR analysis
+Regression_21_24 = analysis_21_24[["LSOA21CD",                                               # LSOA code
+                                   "LSOA21NM",                                               # LSOA name
+                                   "accessibility_21", "accessibility_24", "acc_diff_24_21", # dependent variables
+                                   "s-ASG_ABC1", "s-ASG_C2DE",                               # ASG
+                                   "s-D3+",                                                  # Deprivation index
+                                   "s-HHcars_01", "s-HHcars_2+",                             # Vehicle ownership
+                                   "s-HHT_owned", "s-HHT_rented",                            # House tenure
+                                   "s-Acc_det-semidet", "s-Acc_flat", "s-Acc_other",         # Accommodation type
+                                   "Med_HP_2021", "Med_HP_2023",                             # Median house prices
+                                   "Pop_density"]]                                           # Population density
 
 # Correlation matrix
-CSCA_2021_2024_flag = False
+CSCA_2021_2024_flag = True
+
 if CSCA_2021_2024_flag == True:
-    plt_and_save_corr_matrix(analysis_21_24, outputs["correlation_matrix_2021_2024"])
+    # create a df for the correlation matrix
+    corr_matrix_2021_2024 = Regression_21_24[["accessibility_21", "accessibility_24", "acc_diff_24_21",
+                                              "s-ASG_ABC1", "s-ASG_C2DE",
+                                              "s-D3+",
+                                              "s-HHcars_01", "s-HHcars_2+",
+                                              "s-HHT_owned", "s-HHT_rented",
+                                              "s-Acc_det-semidet", "s-Acc_flat", "s-Acc_other",
+                                              "Med_HP_2021", "Med_HP_2023",
+                                              "Pop_density"]]
+    plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
 OLS_2021_2024_flag = True
 # Normalisation options:
-normalise_dependent_variables = False
-normalise_independent_variables = False
+#normalise_dependent_variables = False
+#normalise_independent_variables = False
 
 if OLS_2021_2024_flag == True:
     # print if the dependent and independent variables are normalised according to the options
-    print("-------------------------------------------------------------------")
-    print("Normalise dependent variables: ", normalise_dependent_variables)
-    print("Normalise independent variables: ", normalise_independent_variables)
-    print("-------------------------------------------------------------------")
+    #print("-------------------------------------------------------------------")
+    #print("Normalise dependent variables: ", normalise_dependent_variables)
+    #print("Normalise independent variables: ", normalise_independent_variables)
+    #print("-------------------------------------------------------------------")
 
     # take the Log of house prices (and other big numbers to avoid coefficients with many zeros)
     print()
     print("Log-transforming the median house prices...")
     print()
-    analysis_21_24["Med_HP_2021"] = np.log(analysis_21_24["Med_HP_2021"])
-    analysis_21_24["Med_HP_2023"] = np.log(analysis_21_24["Med_HP_2023"])
+    Regression_21_24["Med_HP_2021"] = np.log(Regression_21_24["Med_HP_2021"])
+    Regression_21_24["Med_HP_2023"] = np.log(Regression_21_24["Med_HP_2023"])
 
     # categorise the variables in dependent and independent variables and save the categorisation into two lists:
-    cat_dep_variables = ["EVCI2021",         # EVCI 2021
-                         "y2021Q4",          # EV licensing 2021
-                         "EVCI2024",         # EVCI 2024
-                         "y2024Q2",          # EV licensing 2024
-                         "accessibility_21", # Accessibility 2021
+    cat_dep_variables = ["accessibility_21", # Accessibility 2021
                          "accessibility_24", # Accessibility 2024
                          "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
+                        #"EVCI2021",  # EVCI 2021
+                        #"y2021Q4",   # EV licensing 2021
+                        #"EVCI2024",  # EVCI 2024
+                        #"y2024Q2",   # EV licensing 2024
 
-    cat_indep_variables = ["Med_HP_2021",             # Median house prices 2021 (December)
+    cat_indep_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
+                           "s-ASG_C2DE",        # Share of HH in social grade C2 and DE
+                           "s-D3+",             # Share of HH deprived in 3+ dimensions
+                           "s-HHcars_01",       # Share of HH with 0 or 1 car
+                           "s-HHcars_2+",       # Share of HH with 2+ cars
+                           "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                           "s-HHT_rented",      # share of HH renting
+                           "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                           "s-Acc_flat",        # Share of HH living in flats
+                           "s-Acc_other",       # Share of HH living in terraced & other houses
+                           "Med_HP_2021",       # Median house prices 2021 (December)
+                           "Med_HP_2023",       # Median house prices 2023 (March)
+                           "Pop_density"]       # Population density (thousands)
+
+    ''' # if using total counts instead of shares:
+                           "Med_HP_2021",             # Median house prices 2021 (December)
                            "Med_HP_2023",             # Median house prices 2023 (March)
                            "ASG_AB_C1",               # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
                            "ASG_C2_DE",               # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
@@ -460,44 +510,46 @@ if OLS_2021_2024_flag == True:
                            "HHT_rented",              # N of HH renting
                            "Acc_detached_semidet",    # N of HH living in detached and semidetached houses
                            "Acc_flat",                # N of HH living in flats
-                           "Acc_terraced"]            # N of HH living in terraced
+                           "Acc_other"]               # N of HH living in terraced & other
+                           '''
 
-    # normalise the variables with the Min-Max scaling
+    '''
     if normalise_dependent_variables == True:
         for i in cat_dep_variables:
-            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
-                    analysis_21_24[i].max() - analysis_21_24[i].min())
+            Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                    Regression_21_24[i].max() - Regression_21_24[i].min())
 
     if normalise_independent_variables == True:
         for i in cat_indep_variables:
-            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
-                    analysis_21_24[i].max() - analysis_21_24[i].min())
+            Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                    Regression_21_24[i].max() - Regression_21_24[i].min())
+    '''
 
     def normalise_and_run_OLS(var, normalise_dependent_variables, normalise_independent_variables):
         # if dependent variables are not normalised, I have to normalise them here if they are included in the independent variables
         if normalise_dependent_variables == False:
             if normalise_independent_variables == True:
                 # copy the analysis dataframe into a new dataframe for the supply_21 analysis
-                analysis_21_24_n = analysis_21_24.copy()
+                Regression_21_24_n = Regression_21_24.copy()
                 # for each variable in var, normalise it:
                 for v in var:
-                    analysis_21_24_n[v] = (analysis_21_24_n[v] - analysis_21_24_n[v].min()) / (
-                            analysis_21_24_n[v].max() - analysis_21_24_n[v].min())
-                # run the OLS analysis with the analysis_21_24_supply_21 dataframe
-                supply_summary_table = OLS_analysis(analysis_21_24_n, dependent_variable, independent_variables)
+                    Regression_21_24_n[v] = (Regression_21_24_n[v] - Regression_21_24_n[v].min()) / (
+                            Regression_21_24_n[v].max() - Regression_21_24_n[v].min())
+                # run the OLS analysis with the Regression_21_24 dataframe
+                supply_summary_table = OLS_analysis(Regression_21_24_n, dependent_variable, independent_variables)
                 return supply_summary_table
             else:
-                supply_summary_table = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+                supply_summary_table = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
                 return supply_summary_table
         else:
             if normalise_independent_variables == True:
-                supply_summary_table = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+                supply_summary_table = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
                 return supply_summary_table
             else:
                 # throw an exception as some dependent variables are normalised and they are included in the non-normalised independent variables
                 raise Exception("Dependent variables are normalised, but some of them are included in the non-normalised independent variables."
                                 "Please change the normalisation options.")
-
+    '''
     # __________________________________________________________________________________________________________________
     # OLS for SUPPLY 2021
     dependent_variable = "EVCI2021"
@@ -513,7 +565,7 @@ if OLS_2021_2024_flag == True:
                               "HHT_rented",              # N of HH renting
                               "Acc_detached_semidet",    # N of HH living in detached and semidetached houses
                               "Acc_flat",                # N of HH living in flats
-                              "Acc_terraced"]]           # N of HH living in terraced houses
+                              "Acc_other"]]              # N of HH living in terraced & other houses
 
 
     supply_summary_table_21 = normalise_and_run_OLS(["y2021Q4"], normalise_dependent_variables, normalise_independent_variables)
@@ -535,19 +587,34 @@ if OLS_2021_2024_flag == True:
                               "HHT_rented",           # N of HH renting
                               "Acc_detached_semidet", # N of HH living in detached and semidetached houses
                               "Acc_flat",             # N of HH living in flats
-                              "Acc_terraced"]]        # N of HH living in terraced houses
+                              "Acc_other"]]           # N of HH living in terraced & other houses
 
     demand_summary_table_21 = normalise_and_run_OLS(["EVCI2021"], normalise_dependent_variables, normalise_independent_variables)
     # save the summary table
     demand_summary_table_21.to_csv(outputs["OLS_demand_2021"], index=False)
-
+    '''
     # __________________________________________________________________________________________________________________
     # OLS for ACCESSIBILITY 2021
     dependent_variable = "accessibility_21"
-    independent_variables = [["Med_HP_2021",          # Median house prices 2021 (December)
+    independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
+                              "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+                              "s-D3+",             # Share of HH deprived in 3+ dimensions
+                              "s-HHcars_01",      # Share of HH with 0 or 1 car
+                              "s-HHcars_2+",       # Share of HH with 2+ cars
+                              "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                              "s-HHT_rented",     # share of HH renting
+                              "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                              "s-Acc_flat",        # Share of HH living in flats
+                              "s-Acc_other",       # Share of HH living in terraced & other houses
+                              "Med_HP_2021",       # Median house prices 2021 (December)
+                              #"Med_HP_2023",      # Median house prices 2023 (March)
+                              "Pop_density"]      # Population density (thousands)
+
+    ''' # if considering total counts instead of shares:
+                              "Med_HP_2021",          # Median house prices 2021 (December)
                               "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
                               "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
-                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "D3+",                  # Deprivation index: n of HH deprived in 2+ dimensions
                               "Pop_density",          # Population density
                               "HH_cars_0_1",          # N of HH with 0 or 1 car
                               "HH_cars_2+",           # N of HH with 2+ cars
@@ -555,12 +622,12 @@ if OLS_2021_2024_flag == True:
                               "HHT_rented",           # N of HH renting
                               "Acc_detached_semidet", # N of HH living in detached and semidetached houses
                               "Acc_flat",             # N of HH living in flats
-                              "Acc_terraced"]]        # N of HH living in terraced houses
-
-    accessibility_summary_table_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+                              "Acc_other"]]           # N of HH living in terrace & other houses
+    '''
+    accessibility_summary_table_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
     # save the summary table
     accessibility_summary_table_21.to_csv(outputs["OLS_accessibility_2021"], index=False)
-
+    '''
     # __________________________________________________________________________________________________________________
     # OLS for SUPPLY 2024
     dependent_variable = "EVCI2024"
@@ -568,7 +635,7 @@ if OLS_2021_2024_flag == True:
                              ["Med_HP_2023",          # Median house prices 2021 (December)
                               "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
                               "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
-                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "D3+",                  # Deprivation index: n of HH deprived in 2+ dimensions
                               "Pop_density",          # Population density
                               "HH_cars_0_1",          # N of HH with 0 or 1 car
                               "HH_cars_2+",           # N of HH with 2+ cars
@@ -576,7 +643,7 @@ if OLS_2021_2024_flag == True:
                               "HHT_rented",           # N of HH renting
                               "Acc_detached_semidet", # N of HH living in detached and semidetached houses
                               "Acc_flat",             # N of HH living in flats
-                              "Acc_terraced"]]        # N of HH living in terraced houses
+                              "Acc_other"]]           # N of HH living in terraced & other houses
 
     supply_summary_table_24 = normalise_and_run_OLS(["y2024Q2"], normalise_dependent_variables, normalise_independent_variables)
 
@@ -590,7 +657,7 @@ if OLS_2021_2024_flag == True:
                              ["Med_HP_2023",          # Median house prices 2021 (December)
                               "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
                               "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
-                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "D3+",                  # Deprivation index: n of HH deprived in 2+ dimensions
                               "Pop_density",          # Population density
                               "HH_cars_0_1",          # N of HH with 0 or 1 car
                               "HH_cars_2+",           # N of HH with 2+ cars
@@ -598,20 +665,35 @@ if OLS_2021_2024_flag == True:
                               "HHT_rented",           # N of HH renting
                               "Acc_detached_semidet", # N of HH living in detached and semidetached houses
                               "Acc_flat",             # N of HH living in flats
-                              "Acc_terraced"]]        # N of HH living in terraced houses
+                              "Acc_other"]]           # N of HH living in terraced & other houses
 
     demand_summary_table_24 = normalise_and_run_OLS(["EVCI2024"], normalise_dependent_variables, normalise_independent_variables)
 
     # save the summary table
     demand_summary_table_24.to_csv(outputs["OLS_demand_2024"], index=False)
-
+    '''
     # __________________________________________________________________________________________________________________
     # OLS for ACCESSIBILITY 2024
     dependent_variable = "accessibility_24"
-    independent_variables = [["Med_HP_2023",          # Median house prices 2021 (December)
+    independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
+                              "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+                              "s-D3+",             # Share of HH deprived in 3+ dimensions
+                              "s-HHcars_01",      # Share of HH with 0 or 1 car
+                              "s-HHcars_2+",       # Share of HH with 2+ cars
+                              "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                              "s-HHT_rented",     # share of HH renting
+                              "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                              "s-Acc_flat",        # Share of HH living in flats
+                              "s-Acc_other",      # Share of HH living in terraced & other houses
+                              #"Med_HP_2021",      # Median house prices 2021 (December)
+                              "Med_HP_2023",       # Median house prices 2023 (March)
+                              "Pop_density"]      # Population density (thousands)
+
+    ''' # if considering total counts instead of shares:
+                            [["Med_HP_2023",          # Median house prices 2021 (December)
                               "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
                               "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
-                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "D3+",                  # Deprivation index: n of HH deprived in 2+ dimensions
                               "Pop_density",          # Population density
                               "HH_cars_0_1",          # N of HH with 0 or 1 car
                               "HH_cars_2+",           # N of HH with 2+ cars
@@ -619,9 +701,9 @@ if OLS_2021_2024_flag == True:
                               "HHT_rented",           # N of HH renting
                               "Acc_detached_semidet", # N of HH living in detached and semidetached houses
                               "Acc_flat",             # N of HH living in flats
-                              "Acc_terraced"]]        # N of HH living in terraced houses
-
-    accessibility_summary_table_24 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+                              "Acc_other"]]           # N of HH living in terraced & other houses
+    '''
+    accessibility_summary_table_24 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
 
     # save the summary table
     accessibility_summary_table_24.to_csv(outputs["OLS_accessibility_2024"], index=False)
@@ -629,10 +711,25 @@ if OLS_2021_2024_flag == True:
     # __________________________________________________________________________________________________________________
     # OLS for ACCESSIBILITY DIFFERENCE 2024-2021
     dependent_variable = "acc_diff_24_21"
-    independent_variables = [["Med_HP_2023",          # Median house prices 2021 (December)
+    independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
+                              "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+                              "s-D3+",             # Share of HH deprived in 3+ dimensions
+                              "s-HHcars_01",      # Share of HH with 0 or 1 car
+                              "s-HHcars_2+",       # Share of HH with 2+ cars
+                              "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                              "s-HHT_rented",     # share of HH renting
+                              "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                              "s-Acc_flat",        # Share of HH living in flats
+                              "s-Acc_other",       # Share of HH living in terraced & other houses
+                              #"Med_HP_2021",      # Median house prices 2021 (December)
+                              "Med_HP_2023",       # Median house prices 2023 (March)
+                              "Pop_density"]      # Population density (thousands)
+
+    ''' # if considering total counts instead of shares:
+                            [["Med_HP_2023",          # Median house prices 2021 (December)
                               "ASG_AB_C1",            # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
                               "ASG_C2_DE",            # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
-                              "D2+",                  # Deprivation index: n of HH deprived in 2+ dimensions
+                              "D3+",                  # Deprivation index: n of HH deprived in 2+ dimensions
                               "Pop_density",          # Population density
                               "HH_cars_0_1",          # N of HH with 0 or 1 car
                               "HH_cars_2+",           # N of HH with 2+ cars
@@ -640,9 +737,9 @@ if OLS_2021_2024_flag == True:
                               "HHT_rented",           # N of HH renting
                               "Acc_detached_semidet", # N of HH living in detached and semidetached houses
                               "Acc_flat",             # N of HH living in flats
-                              "Acc_terraced"]]        # N of HH living in terraced houses
-
-    acc_diff_summary_table_24_21 = OLS_analysis(analysis_21_24, dependent_variable, independent_variables)
+                              "Acc_other"]]           # N of HH living in terraced & other houses
+    '''
+    acc_diff_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
 
     # save the summary table
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
@@ -671,22 +768,22 @@ def lsoa_boundaries(ax):
 
 if GWR_flag == True:
     London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
-    # Now use the polygons geometry for the analysis_21_24 dataframe
-    analysis_21_24 = analysis_21_24.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
-    # Now turn the analysis_21_24 dataframe into a geodataframe
-    analysis_21_24 = gpd.GeoDataFrame(analysis_21_24)
+    # Now use the polygons geometry for the Regression_21_24 dataframe
+    Regression_21_24 = Regression_21_24.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
+    # Now turn the Regression_21_24 dataframe into a geodataframe
+    Regression_21_24 = gpd.GeoDataFrame(Regression_21_24)
 
     # Rename columns
-    analysis_21_24.rename(columns={"LSOA21NM_x": "LSOA21NM"}, inplace=True)
+    Regression_21_24.rename(columns={"LSOA21NM_x": "LSOA21NM"}, inplace=True)
     # Drop extra columns
-    analysis_21_24.drop(columns=["LSOA21NM_y", "GlobalID"], inplace=True)
+    Regression_21_24.drop(columns=["LSOA21NM_y", "GlobalID"], inplace=True)
 
     # Remove NaNs
-    analysis_21_24 = analysis_21_24.dropna()
+    Regression_21_24 = Regression_21_24.dropna()
 
     # Turn the geometry column into a x and y column
-    analysis_21_24["x"] = analysis_21_24.centroid.x
-    analysis_21_24["y"] = analysis_21_24.centroid.y
+    Regression_21_24["x"] = Regression_21_24.centroid.x
+    Regression_21_24["y"] = Regression_21_24.centroid.y
 
     # categorise the variables in dependent and independent variables and save the categorisation into two lists:
     cat_dep_variables = [
@@ -698,11 +795,26 @@ if GWR_flag == True:
                          "accessibility_24", # Accessibility 2024
                          "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
 
-    cat_indep_variables = ["Med_HP_2021",             # Median house prices 2021 (December)
+    cat_indep_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
+                           #"s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+                           "s-D3+",             # Share of HH deprived in 3+ dimensions
+                           #"s-HHcars_01",      # Share of HH with 0 or 1 car
+                           "s-HHcars_2+",       # Share of HH with 2+ cars
+                           "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                           #"s-HHT_rented",     # share of HH renting
+                           "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                           "s-Acc_flat",        # Share of HH living in flats
+                           "s-Acc_other",       # Share of HH living in terraced & other houses
+                           #"Med_HP_2021",      # Median house prices 2021 (December)
+                           "Med_HP_2023",       # Median house prices 2023 (March)
+                           "Pop_density"]       # Population density (thousands)
+
+    ''' # if considering total counts instead of shares:        
+                           "Med_HP_2021",             # Median house prices 2021 (December)
                            #"Med_HP_2023",             # Median house prices 2023 (March)
                            "ASG_AB_C1",               # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
                            "ASG_C2_DE",               # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
-                           "D2+",                     # Deprivation index: n of HH deprived in 2+ dimensions
+                           "D3+",                     # Deprivation index: n of HH deprived in 2+ dimensions
                            "Pop_density",             # Population density
                            "HH_cars_0_1",             # N of HH with 0 or 1 car
                            "HH_cars_2+",              # N of HH with 2+ cars
@@ -710,28 +822,28 @@ if GWR_flag == True:
                            "HHT_rented",              # N of HH renting
                            "Acc_detached_semidet",    # N of HH living in detached and semidetached houses
                            "Acc_flat",                # N of HH living in flats
-                           "Acc_terraced"]            # N of HH living in terraced
-
+                           "Acc_other"]               # N of HH living in terraced & other houses
+    '''
     if normalise_dependent_variables == True:
         for i in cat_dep_variables:
-            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
-                    analysis_21_24[i].max() - analysis_21_24[i].min())
+            Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                    Regression_21_24[i].max() - Regression_21_24[i].min())
 
     if normalise_independent_variables == True:
         for i in cat_indep_variables:
-            analysis_21_24[i] = (analysis_21_24[i] - analysis_21_24[i].min()) / (
-                    analysis_21_24[i].max() - analysis_21_24[i].min())
+            Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                    Regression_21_24[i].max() - Regression_21_24[i].min())
 
 
     # arrange endog (y) as a column vector, i.e. an m x 1 array
     for dep in cat_dep_variables:
         print("GWR analysis for: ", dep)
-        endog = analysis_21_24[dep].values.reshape(-1, 1)
+        endog = Regression_21_24[dep].values.reshape(-1, 1)
         # exog (X) is an m x n array, where m is the number of rows, and n is the number of regressors
-        exog = analysis_21_24[cat_indep_variables].values
+        exog = Regression_21_24[cat_indep_variables].values
 
         # Python 3 zip returns an iterable
-        coords = list(zip(analysis_21_24.x.values, analysis_21_24.y.values))
+        coords = list(zip(Regression_21_24.x.values, Regression_21_24.y.values))
 
         # Instantiate bandwidth selection class - bisquare NN (adaptive)
         bw = Sel_BW(
@@ -763,10 +875,10 @@ if GWR_flag == True:
                                subplot_kw=dict(aspect='equal'))
 
         # add local R2 to df
-        analysis_21_24['localR2'] = results.localR2
-        vmin, vmax = np.min(analysis_21_24['localR2']), np.max(analysis_21_24['localR2'])
+        Regression_21_24['localR2'] = results.localR2
+        vmin, vmax = np.min(Regression_21_24['localR2']), np.max(Regression_21_24['localR2'])
 
-        analysis_21_24.plot(
+        Regression_21_24.plot(
             'localR2',
             markersize=10.,
             edgecolor='#555555',
@@ -793,8 +905,23 @@ if GWR_flag == True:
         #plt.show()
 
         # create a gdf with the local R2 values
-        analysis_21_24_R2 = analysis_21_24[['LSOA21CD',
-                                            'LSOA21NM',
+        Regression_21_24_R2 = Regression_21_24[["LSOA21CD",
+                                                "LSOA21NM",
+                                                "s-ASG_ABC1",
+                                                # "s-ASG_C2DE",
+                                                "s-D3+",
+                                                # "s-HHcars_01",
+                                                "s-HHcars_2+",
+                                                "s-HHT_owned",
+                                                # "s-HHT_rented",
+                                                "s-Acc_det-semidet",
+                                                "s-Acc_flat",
+                                                "s-Acc_other",
+                                                # "Med_HP_2021",
+                                                "Med_HP_2023",
+                                                "Pop_density"]]
+
+        ''' # if considering total counts instead of shares:  
                                             'ASG_AB_C1',
                                             'ASG_C2_DE',
                                             'D2+',
@@ -808,14 +935,15 @@ if GWR_flag == True:
                                             'x',
                                             'y',
                                             'localR2']]
+        '''
 
         # rename the coloumns with names shorter than 10 characters
-        analysis_21_24_R2.rename(columns={"HH_cars_0_1": "HH_cars_01",
+        Regression_21_24_R2.rename(columns={"HH_cars_0_1": "HH_cars_01",
                                           "Acc_detached_semidet": "det_semidt"},
                                  inplace=True)
 
         # Save the results to a shp file
-        analysis_21_24_R2.to_file("./output-data/GWR-results/SHP/GWR_R2_" + dep + "_" + ".shp")
+        Regression_21_24_R2.to_file("./output-data/GWR-results/SHP/GWR_R2_" + dep + "_" + ".shp")
 
         # copy the independent variables into a new list
         labels = cat_indep_variables.copy()
@@ -835,10 +963,10 @@ if GWR_flag == True:
                                        subplot_kw=dict(aspect='equal'))
 
                 # add local coefficients to df using independent variable name:
-                analysis_21_24[str(param)] = results.params[:, param]
+                Regression_21_24[str(param)] = results.params[:, param]
 
                 # Compute value ranges only for significant areas
-                significant_values = analysis_21_24.loc[significant_mask, str(param)]
+                significant_values = Regression_21_24.loc[significant_mask, str(param)]
                 vmin, vmax = significant_values.min(), significant_values.max()
 
                 max_abs_val = max(abs(vmin), abs(vmax))
@@ -860,7 +988,7 @@ if GWR_flag == True:
                     norm = plt.Normalize(vmin=0, vmax=vmax)
 
                 # Plot only the significant areas
-                analysis_21_24[significant_mask].plot(
+                Regression_21_24[significant_mask].plot(
                     str(param),
                     markersize=10.,
                     edgecolor='#555555',
@@ -887,114 +1015,15 @@ if GWR_flag == True:
                 _ = ax.axis('off')
 
                 # Add tvales as a column to the dataframe
-                analysis_21_24['tvalues_' + str(param)] = results.tvalues[:, param]
+                Regression_21_24['tvalues_' + str(param)] = results.tvalues[:, param]
 
                 # Save the figure
                 plt.savefig("./output-data/GWR-results/PNG/GWR_coeff_" + dep + "_" + labels[param] + ".png")
                 #plt.show()
 
                 # Save the results to a shp file masking the significant areas
-                analysis_21_24[significant_mask].to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + "_" + str(param) + "_" + labels[param] + ".shp")
-                #analysis_21_24.to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + ".shp")
-
-quick_GWR_single_flag = False
-if quick_GWR_single_flag == True: # code for quick GWR analysis for a single dependent variable
-    endog = analysis_21_24.EVCI2021.values.reshape(-1, 1)
-    # exog (X) is an m x n array, where m is the number of rows, and n is the number of regressors
-    exog = analysis_21_24[['Med_HP_2021', 'Pop_density']].values
-
-    # Python 3 zip returns an iterable
-    coords = list(zip(analysis_21_24.x.values, analysis_21_24.y.values))
-
-    # Instantiate bandwidth selection class - bisquare NN (adaptive)
-    bw = Sel_BW(coords,
-                endog,
-                exog,
-                kernel='bisquare', fixed=False)
-
-    # Find optimal bandwidth by minimizing AICc using golden section search algorithm
-    bw = Sel_BW(coords, endog, exog).search(criterion='AICc')
-    print("GWR Bandwith: ", bw)
-
-    # Instantiate GWR model and estimate parameters and diagnostics
-    model = GWR(coords,
-                endog,
-                exog,
-                bw,
-                family=Gaussian(),
-                fixed=False,
-                kernel='gaussian')
-
-    results = model.fit()
-
-    # Map local R-square values (a weighted R-square at each observation location)
-    fig, ax = plt.subplots(1,
-                           figsize=(8, 8),
-                           dpi=100,
-                           subplot_kw=dict(aspect='equal'))
-
-    # add local R2 to df
-    analysis_21_24['localR2'] = results.localR2
-    vmin, vmax = np.min(analysis_21_24['localR2']), np.max(analysis_21_24['localR2'])
-    analysis_21_24.plot(
-        'localR2',
-        markersize=5.,
-        edgecolor='#555555',
-        linewidths=.25,
-        vmin=vmin,
-        vmax=vmax,
-        cmap='viridis',
-        ax=ax,
-        zorder=2)
-
-    # impose LSOA boundaries
-    lsoa_boundaries(ax)
-
-    ax.set_title('Local R-Squared')
-    fig = ax.get_figure()
-    cax = fig.add_axes([0.98, 0.2, 0.03, 0.6])
-    sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
-    sm._A = []
-    fig.colorbar(sm, cax=cax)
-    _ = ax.axis('off')
-
-    #plt.show()
-
-    labels = ['Intercept', 'Med_HP_2021', 'Pop_density']
-
-    # Map local coefficients
-    for param in range(1, results.params.shape[1]):
-        fig, ax = plt.subplots(1,
-                               figsize=(8, 8),
-                               dpi=100,
-                               subplot_kw=dict(aspect='equal'))
-
-        # add local coefficients to df
-        analysis_21_24[str(param)] = results.params[:, param]
-        vmin, vmax = np.min(analysis_21_24[str(param)]), np.max(analysis_21_24[str(param)])
-        analysis_21_24.plot(
-            str(param),
-            markersize=5.,
-            edgecolor='#555555',
-            linewidths=.25,
-            vmin=vmin,
-            vmax=vmax,
-            cmap='viridis',
-            ax=ax,
-            zorder=2)
-
-        # impose LSOA boundaries
-        lsoa_boundaries(ax)
-
-        ax.set_title(labels[param] + ' Coefficient estimates')
-        fig = ax.get_figure()
-        cax = fig.add_axes([0.98, 0.2, 0.03, 0.6])
-        sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
-        sm._A = []
-        fig.colorbar(sm, cax=cax)
-        _ = ax.axis('off')
-
-        #plt.show()
+                Regression_21_24[significant_mask].to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + "_" + str(param) + "_" + labels[param] + ".shp")
+                #Regression_21_24.to_file("./output-data/GWR-results/SHP/GWR_results_" + dep + ".shp")
 
 ########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
@@ -1002,8 +1031,8 @@ calculate_Gini_flag = False
 
 if calculate_Gini_flag == True:
     # Load the accessibility data, make them numpy arrays
-    accessibility_21 = np.array(analysis_21_24["accessibility_21"])
-    accessibility_24 = np.array(analysis_21_24["accessibility_24"])
+    accessibility_21 = np.array(Regression_21_24["accessibility_21"])
+    accessibility_24 = np.array(Regression_21_24["accessibility_24"])
 
     # Remove NaNs
     accessibility_21 = accessibility_21[~np.isnan(accessibility_21)]

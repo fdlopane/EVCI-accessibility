@@ -127,7 +127,7 @@ def plt_and_save_corr_matrix(analysis_df, output_file_name):
     # plt.savefig('Plot/correlation_matrix_improved.png', format='png', dpi=300, bbox_inches='tight')
 
     # Display the chart
-    plt.show()
+    #plt.show()
 
     # print(corr_matrix)
     # Save correlation matrix to csv
