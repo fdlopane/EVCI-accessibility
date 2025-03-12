@@ -814,13 +814,13 @@ if GWR_flag == True:
                            "s-HHcars_01",      # Share of HH with 0 or 1 car
                            #"s-HHcars_2+",       # Share of HH with 2+ cars
                            #"s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
-                           "s-HHT_rented"]     # share of HH renting
+                           "s-HHT_rented",     # share of HH renting
                            #"s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
-                           #"s-Acc_flat",        # Share of HH living in flats
-                           #"s-Acc_other",       # Share of HH living in terraced & other houses
+                           "s-Acc_flat",        # Share of HH living in flats
+                           "s-Acc_other",       # Share of HH living in terraced & other houses
                            #"Med_HP_2021",      # Median house prices 2021 (December)
-                           #"Med_HP_2023",       # Median house prices 2023 (March)
-                           #"Pop_density"]       # Population density (thousands)
+                           "Med_HP_2023",       # Median house prices 2023 (March)
+                           "Pop_density"]       # Population density (thousands)
 
     ''' # if considering total counts instead of shares:        
                            "Med_HP_2021",             # Median house prices 2021 (December)
