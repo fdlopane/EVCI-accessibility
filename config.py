@@ -15,6 +15,8 @@ inputs["Population_density_GB"] = "./input-data/Population/2021_LSOA_Population_
 inputs["Vehicle_ownership_London_2021"] = "./input-data/Vehicle_ownership/Vehicles_HH_2021_London.csv"
 inputs["House_tenure_London_2021"] = "./input-data/House_tenure/House_tenure_2021_London.csv"
 inputs["Accommodation_type_London_2021"] = "./input-data/Accommodation_type/Accommodation_type_2021_London.csv"
+inputs["Employment_2021_GB"] = "./input-data/Employment/employment_GB_2021.csv"
+inputs["Employment_2023_GB"] = "./input-data/Employment/employment_GB_2023.csv"
 
 generated = {}
 generated["EVCI-London"] = "./generated-files/EVCI-London.csv"
@@ -23,6 +25,7 @@ generated["input-totals"] = "./generated-files/input-supply-demand-totals.csv"
 generated["Mean_house_prices_London"] = "./generated-files/Mean_price_residential_properties_LSOA_1995_2022_London.csv"
 generated["Median_house_prices_London"] = "./generated-files/Median_price_residential_properties_LSOA_1995_2022_London.csv"
 generated["ASG_London"] = "./generated-files/Approximated_social_grade_LSOA_2021_London.csv"
+generated["road_net_chars"] = "./generated-files/road_network_characteristics.csv"
 
 outputs = {}
 outputs["correlation_matrix_2021_2024"] = "./output-data/correlation_matrix_2021_2024.csv"

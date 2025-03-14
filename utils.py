@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from tqdm import tqdm
+import osmnx as ox
+from shapely.validation import make_valid
+
 
 ########################################################################################################################
 # correlation between 2 fields
@@ -232,5 +236,44 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
     #print()
     return summary_table
 
-
 ########################################################################################################################
+# Road network density calculation
+def road_net_chars_calculator(bfcs):
+    '''
+    This function calculates the road network characteristics for each LSOA in the input bfcs dataframe
+    '''
+    bfcs['geometry_4326'] = bfcs.geometry.to_crs(4326)
+
+    ## This will output a pandas dataframe of street network characteristics
+
+    chars_dict = {lsoa_cd: {} for lsoa_cd in bfcs.LSOA21CD}
+
+    for idx, row in tqdm(bfcs.iterrows()):
+        if (len(chars_dict[row.LSOA21CD]) == 0) | (chars_dict[row.LSOA21CD] == 'error'):
+            poly_4326 = row.geometry_4326
+            if not poly_4326.is_valid:
+                poly_4326 = make_valid(poly_4326)
+            poly_27700 = row.geometry
+            if not poly_27700.is_valid:
+                poly_27700 = make_valid(poly_27700)
+
+            try:
+                G = ox.graph_from_polygon(poly_4326, network_type='all')  # 'drive', 'bike', 'walk', etc.
+                stats = ox.stats.basic_stats(G)
+                #chars_dict[row.LSOA21CD]['circuity'] = stats['circuity_avg']
+                #chars_dict[row.LSOA21CD]['self_loops'] = stats['self_loop_proportion']
+                chars_dict[row.LSOA21CD]['street_length_total'] = stats['street_length_total']
+                chars_dict[row.LSOA21CD]['street_density_km'] = stats['street_length_total'] / poly_27700.area
+                chars_dict[row.LSOA21CD]['intersection_count'] = stats['intersection_count']
+                chars_dict[row.LSOA21CD]['intersection_density_km'] = stats['intersection_count'] / poly_27700.area
+                #chars_dict[row.LSOA21CD]['streets_per_node'] = stats['streets_per_node_avg']
+
+            except:
+                chars_dict[row.LSOA21CD] = 'error'
+
+        else:
+            pass
+
+    chars_df = pd.DataFrame(chars_dict).transpose().reset_index().rename(columns={'index': 'LSOA21CD'})
+
+    return chars_df

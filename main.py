@@ -147,8 +147,8 @@ if SD_flag == True:
 analysis_21_24 = analysis_df[["LSOA21CD", "LSOA21NM", "EVCI2021", "y2021Q4", "EVCI2024", "y2024Q2"]]
 
 # London LSOA codes
-Londn_LSOAs = pd.read_csv(inputs["London_LSOAs"])
-London_LSOA_codes = Londn_LSOAs["LSOA21CD"].tolist()
+London_LSOAs = pd.read_csv(inputs["London_LSOAs"])
+London_LSOA_codes = London_LSOAs["LSOA21CD"].tolist()
 
 # Filter out London from GB mean house prices
 if not os.path.exists(generated["Mean_house_prices_London"]):
@@ -328,6 +328,17 @@ analysis_21_24["accessibility_21"] = analysis_21_24["EVCI2021"] / analysis_21_24
 analysis_21_24["accessibility_24"] = analysis_21_24["EVCI2024"] / analysis_21_24["y2024Q2"]
 analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] - analysis_21_24["accessibility_21"]
 
+# Create demand and supply improvements between 2021 and 2024
+analysis_21_24["EVCI_improvement"] = analysis_21_24["EVCI2024"] - analysis_21_24["EVCI2021"]
+analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement"] / analysis_21_24["EVCI2021"]
+analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement_rate"].replace([np.inf, -np.inf], np.nan)
+analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement_rate"].fillna(0)
+
+analysis_21_24["EV_licensing_improvement"] = analysis_21_24["y2024Q2"] - analysis_21_24["y2021Q4"]
+analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement"] / analysis_21_24["y2021Q4"]
+analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].replace([np.inf, -np.inf], np.nan)
+analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].fillna(0)
+
 # Remove columns
 #analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
 #analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number"], inplace=True)
@@ -430,17 +441,57 @@ if var_shares_flag == True:
     analysis_21_24["s-Acc_flat"] = analysis_21_24["Acc_flat"] / (analysis_21_24["Acc_detached_semidet"] + analysis_21_24["Acc_flat"] + analysis_21_24["Acc_other"])
     analysis_21_24["s-Acc_other"] = analysis_21_24["Acc_other"] / (analysis_21_24["Acc_detached_semidet"] + analysis_21_24["Acc_flat"] + analysis_21_24["Acc_other"])
 
+# Add employment distribution information
+Employment_2021_GB = pd.read_csv(inputs["Employment_2021_GB"])
+Employment_2021_London = Employment_2021_GB[Employment_2021_GB["LSOACD"].isin(London_LSOA_codes)]
+Employment_2021_London = Employment_2021_London[["LSOACD", "total"]]
+
+Employment_2021_London.rename(columns={"LSOACD": "LSOA21CD", "total": "jobs_2021"}, inplace=True)
+
+Employment_2023_GB = pd.read_csv(inputs["Employment_2023_GB"])
+Employment_2023_London = Employment_2023_GB[Employment_2023_GB["LSOACD"].isin(London_LSOA_codes)]
+Employment_2023_London = Employment_2023_London[["LSOACD", "total"]]
+Employment_2023_London.rename(columns={"LSOACD": "LSOA21CD", "total": "jobs_2023"}, inplace=True)
+
+# Merge the employment data
+analysis_21_24 = analysis_21_24.merge(Employment_2021_London, on="LSOA21CD", how="outer")
+analysis_21_24 = analysis_21_24.merge(Employment_2023_London, on="LSOA21CD", how="outer")
+
+# LSOA boundaries polygons
+lsoa_gdf = gpd.read_file(inputs["London_LSOA_polygons"])
+
+# Calculate road network characteristics in London and add it as an extra variable
+# df columns: 'street_length_total', 'street_density_km', 'intersection_count', 'intersection_density_km'
+if not os.path.exists(generated["road_net_chars"]):
+    # use the function defined in utils: road_net_chars_calculator
+    road_chars = road_net_chars_calculator(lsoa_gdf) # dataframe with road network characteristics
+    # save the road network characteristics to a csv file
+    road_chars.to_csv(generated["road_net_chars"], index=False)
+else:
+    road_chars = pd.read_csv(generated["road_net_chars"])
+
+print(road_chars.head())
+
+# TODO: Create a column with:
+#  independent variables:
+#  2) road network density
+#  3) POI density
+#  REMEMBER: ADD THEM TO THE REGRESSION DF
+
 # Create a df with only the variables for the OLS and GWR analysis
 Regression_21_24 = analysis_21_24[["LSOA21CD",                                               # LSOA code
                                    "LSOA21NM",                                               # LSOA name
-                                   "accessibility_21", "accessibility_24", "acc_diff_24_21", # dependent variables
+                                   "accessibility_21", "accessibility_24", "acc_diff_24_21", # dep var (accessibility)
+                                   "EVCI_improvement", "EVCI_improvement_rate",              # dep var (supply impr)
+                                   "EV_licensing_improvement", "EV_licensing_improvement_rate", # dep var (demand impr)
                                    "s-ASG_ABC1", "s-ASG_C2DE",                               # ASG
                                    "s-D3+",                                                  # Deprivation index
                                    "s-HHcars_01", "s-HHcars_2+",                             # Vehicle ownership
                                    "s-HHT_owned", "s-HHT_rented",                            # House tenure
                                    "s-Acc_det-semidet", "s-Acc_flat", "s-Acc_other",         # Accommodation type
                                    "Med_HP_2021", "Med_HP_2023",                             # Median house prices
-                                   "Pop_density"]]                                           # Population density
+                                   "Pop_density",                                            # Population density
+                                   "jobs_2021", "jobs_2023"]]                                # Number of jobs
 
 # Correlation matrix
 CSCA_2021_2024_flag = True
@@ -751,13 +802,10 @@ if OLS_2021_2024_flag == True:
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GWR_flag = True
+GWR_flag = False
 # Normalisation options:
 normalise_dependent_variables = False
 normalise_independent_variables = False
-
-# borough boundaries
-lsoa_gdf = gpd.read_file(inputs["London_LSOA_polygons"])
 
 def lsoa_boundaries(ax):
     """ to plot boundaries on maps """
