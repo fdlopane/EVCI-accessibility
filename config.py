@@ -26,6 +26,7 @@ generated["Mean_house_prices_London"] = "./generated-files/Mean_price_residentia
 generated["Median_house_prices_London"] = "./generated-files/Median_price_residential_properties_LSOA_1995_2022_London.csv"
 generated["ASG_London"] = "./generated-files/Approximated_social_grade_LSOA_2021_London.csv"
 generated["road_net_chars"] = "./generated-files/road_network_characteristics.csv"
+generated["POIs"] = "./generated-files/POIs.csv"
 
 outputs = {}
 outputs["correlation_matrix_2021_2024"] = "./output-data/correlation_matrix_2021_2024.csv"

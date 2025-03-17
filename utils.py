@@ -6,11 +6,13 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 
 from tqdm import tqdm
 import osmnx as ox
 from shapely.validation import make_valid
-
+from shapely.geometry import Polygon, Point
+import overpy
 
 ########################################################################################################################
 # correlation between 2 fields
@@ -277,3 +279,76 @@ def road_net_chars_calculator(bfcs):
     chars_df = pd.DataFrame(chars_dict).transpose().reset_index().rename(columns={'index': 'LSOA21CD'})
 
     return chars_df
+
+########################################################################################################################
+# Amenities scraping
+def amenities_scarping(bfcs):
+    '''
+    This function scrapes the amenities data from OpenStreetMap
+    '''
+
+    bfcs['geometry_4326'] = bfcs.geometry.to_crs(4326)
+
+    ## This will output a geopandas dataframe of amenities from OSM and their associated LSOA
+
+    xmin, ymin, xmax, ymax = bfcs.to_crs(4326).total_bounds
+    xmin -= .25
+    ymin -= .25
+    ymax += .25
+    xmax += .25
+
+    xs = np.linspace(xmin, xmax, 10)
+    ys = np.linspace(ymin, ymax, 10)
+    polys = []
+    for i in range(9):
+        for j in range(9):
+            poly = Polygon([(xs[i], ys[j]), (xs[i + 1], ys[j]), (xs[i + 1], ys[j + 1]), (xs[i], ys[j + 1])])
+            polys.append(poly)
+    grid = gpd.GeoDataFrame({'geometry': polys, 'grid_id': range(len(polys))}, crs=4326)
+    grid = gpd.sjoin(grid, bfcs.to_crs(4326))
+    grid = grid.drop_duplicates('grid_id')[['geometry']]
+
+    api = overpy.Overpass()
+
+    results_dfs = []
+    for g in tqdm(grid.geometry):
+        bbox = g.bounds
+        query_bodies = [f'node["amenity"]({bbox[1]},{bbox[0]},{bbox[3]},{bbox[2]});',
+                        f'node["shop"]({bbox[1]},{bbox[0]},{bbox[3]},{bbox[2]});',
+                        f'node["bus"~"station|stop"]({bbox[1]},{bbox[0]},{bbox[3]},{bbox[2]});',
+                        f'node["railway"~"station|stop"]({bbox[1]},{bbox[0]},{bbox[3]},{bbox[2]});']
+        for q in query_bodies:
+            query = f"""
+                [out:json];
+                (
+                {q}
+                );
+                out body;
+                """
+
+            result = api.query(query)
+            amenities_data = []
+
+            for node in result.nodes:
+                amenities_data.append({
+                    "id": node.id,
+                    "name": node.tags.get("name", "N/A"),
+                    "type": node.tags.get("amenity", "N/A"),
+                    "bus": node.tags.get("bus", "N/A"),
+                    "railway": node.tags.get("railway", "N/A"),
+                    "latitude": node.lat,
+                    "longitude": node.lon
+                })
+
+            results_dfs.append(pd.DataFrame(amenities_data))
+
+    amenities = pd.concat(results_dfs)
+
+    amenities = amenities.drop_duplicates(subset=['id'])
+    amenities['geometry'] = amenities.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
+
+    amenities = gpd.GeoDataFrame(amenities, crs=4326)
+    amenities = gpd.sjoin(amenities, bfcs.to_crs(4326)[['LSOA21CD', 'geometry']])
+    # amenities.drop(['latitude','longitude'],axis=1).to_file(data_path + 'amenities.geojson',driver='GeoJSON')
+
+    return amenities

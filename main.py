@@ -468,7 +468,6 @@ lsoa_gdf = gpd.read_file(inputs["London_LSOA_polygons"])
 
 # Calculate road network characteristics in London and add it as an extra variable
 # df columns: 'street_length_total', 'street_density_km', 'intersection_count', 'intersection_density_km'
-# VERY time-consuming: 8 hours on a laptop
 if not os.path.exists(generated["road_net_chars"]):
     # use the function defined in utils: road_net_chars_calculator
     road_chars = road_net_chars_calculator(lsoa_gdf) # VERY time-consuming: 8 hours on a laptop
@@ -518,8 +517,9 @@ if error_flag == True:
             error_list.append(road_chars.iloc[i]["LSOA21CD"])
             #print("WARNING - There is an error in LSOA: ", road_chars.iloc[i])
             #print()
-print("LSOAs with errors in road chars: ", error_list)
-print()
+if len(error_list) > 0:
+    print("LSOAs with errors in road chars: ", error_list)
+    print()
 
 # convert the values of the columns to float
 road_chars["street_length_total"] = road_chars["street_length_total"].astype(float)
@@ -536,12 +536,26 @@ road_chars.rename(columns={"street_density_km": "RoadKmDen"}, inplace=True)
 # Merge the road network characteristics to the analysis dataframe
 analysis_21_24 = analysis_21_24.merge(road_chars, on="LSOA21CD", how="outer")
 
+# Calculate amenities (POIs) density per LSOA in London and add it as an extra variable
+if not os.path.exists(generated["POIs"]):
+    # use the function defined in utils: amenities_scarping
+    POI_df = amenities_scarping(lsoa_gdf)
+    # save the road network characteristics to a csv file
+    POI_df.to_csv(generated["POIs"], index=False)
+else:
+    POI_df = pd.read_csv(generated["POIs"])
 
+# Generate a df with the POI count per LSOA
+POI_lsoa = POI_df.groupby("LSOA21CD").size().reset_index(name="POI_count")
 
-# TODO: Create a column with:
-#  independent variables:
-#  3) POI density
-#  REMEMBER: ADD THEM TO THE REGRESSION DF
+# Using the lsoa_gdf geomtery, calculate the area of each LSOA in sq km
+lsoa_gdf["area_sqkm"] = lsoa_gdf["geometry"].to_crs(epsg=27700).area / 10**6
+# now calculate the density of POIs per sq km
+POI_lsoa = POI_lsoa.merge(lsoa_gdf[["LSOA21CD", "area_sqkm"]], on="LSOA21CD", how="outer")
+POI_lsoa["POI_dens"] = POI_lsoa["POI_count"] / POI_lsoa["area_sqkm"] # POIs per sq km
+
+# Merge the POI density to the analysis dataframe
+analysis_21_24 = analysis_21_24.merge(POI_lsoa[["LSOA21CD", "POI_dens"]], on="LSOA21CD", how="outer")
 
 # check null values in the analysis dataframe
 #print()
@@ -572,10 +586,11 @@ Regression_21_24 = analysis_21_24[["LSOA21CD",                                  
                                    "Med_HP_2021", "Med_HP_2023",                             # Median house prices
                                    "Pop_density",                                            # Population density
                                    "RoadKmDen",                                              # Road network (km) density
+                                   "POI_dens",                                               # POI density
                                    "job_th_21", "job_th_23"]]                                # Thousands of jobs per LSOA
 
 # Correlation matrix
-CSCA_2021_2024_flag = True
+CSCA_2021_2024_flag = False
 
 if CSCA_2021_2024_flag == True:
     # create a df for the correlation matrix
@@ -588,9 +603,8 @@ if CSCA_2021_2024_flag == True:
                                               "Med_HP_2021", "Med_HP_2023",
                                               "Pop_density",
                                               "RoadKmDen",
+                                              "POI_dens",
                                               "job_th_21", "job_th_23"]]
-
-    print(corr_matrix_2021_2024)
     plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
