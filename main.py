@@ -453,6 +453,12 @@ Employment_2023_London = Employment_2023_GB[Employment_2023_GB["LSOACD"].isin(Lo
 Employment_2023_London = Employment_2023_London[["LSOACD", "total"]]
 Employment_2023_London.rename(columns={"LSOACD": "LSOA21CD", "total": "jobs_2023"}, inplace=True)
 
+# Transform the jobs in thousands of jobs
+job_thousands_flag = True
+if job_thousands_flag == True:
+    Employment_2021_London["job_th_21"] = Employment_2021_London["jobs_2021"] / 1000
+    Employment_2023_London["job_th_23"] = Employment_2023_London["jobs_2023"] / 1000
+
 # Merge the employment data
 analysis_21_24 = analysis_21_24.merge(Employment_2021_London, on="LSOA21CD", how="outer")
 analysis_21_24 = analysis_21_24.merge(Employment_2023_London, on="LSOA21CD", how="outer")
@@ -470,7 +476,15 @@ if not os.path.exists(generated["road_net_chars"]):
 else:
     road_chars = pd.read_csv(generated["road_net_chars"])
 
-print(road_chars.head())
+# Only keep the 'street_density_km'column
+road_chars = road_chars[["LSOA21CD", "street_density_km"]]
+
+# rename columns
+road_chars.rename(columns={"street_density_km": "RoadKmDen"}, inplace=True)
+
+# Merge the road network characteristics to the analysis dataframe
+analysis_21_24 = analysis_21_24.merge(road_chars, on="LSOA21CD", how="outer")
+
 
 # TODO: Create a column with:
 #  independent variables:
@@ -491,7 +505,8 @@ Regression_21_24 = analysis_21_24[["LSOA21CD",                                  
                                    "s-Acc_det-semidet", "s-Acc_flat", "s-Acc_other",         # Accommodation type
                                    "Med_HP_2021", "Med_HP_2023",                             # Median house prices
                                    "Pop_density",                                            # Population density
-                                   "jobs_2021", "jobs_2023"]]                                # Number of jobs
+                                   "RoadKmDen",                                              # Road network (km) density
+                                   "job_th_21", "job_th_23"]]                                # Thousands of jobs per LSOA
 
 # Correlation matrix
 CSCA_2021_2024_flag = True
@@ -505,7 +520,10 @@ if CSCA_2021_2024_flag == True:
                                               "s-HHT_owned", "s-HHT_rented",
                                               "s-Acc_det-semidet", "s-Acc_flat", "s-Acc_other",
                                               "Med_HP_2021", "Med_HP_2023",
-                                              "Pop_density"]]
+                                              "Pop_density",
+                                              "RoadKmDen",
+                                              "job_th_21", "job_th_23"]]
+    #print(corr_matrix_2021_2024[["job_th_21", "job_th_23"]].head)
     plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
