@@ -445,13 +445,13 @@ if var_shares_flag == True:
 Employment_2021_GB = pd.read_csv(inputs["Employment_2021_GB"])
 Employment_2021_London = Employment_2021_GB[Employment_2021_GB["LSOACD"].isin(London_LSOA_codes)]
 Employment_2021_London = Employment_2021_London[["LSOACD", "total"]]
-
 Employment_2021_London.rename(columns={"LSOACD": "LSOA21CD", "total": "jobs_2021"}, inplace=True)
 
 Employment_2023_GB = pd.read_csv(inputs["Employment_2023_GB"])
 Employment_2023_London = Employment_2023_GB[Employment_2023_GB["LSOACD"].isin(London_LSOA_codes)]
 Employment_2023_London = Employment_2023_London[["LSOACD", "total"]]
 Employment_2023_London.rename(columns={"LSOACD": "LSOA21CD", "total": "jobs_2023"}, inplace=True)
+
 
 # Transform the jobs in thousands of jobs
 job_thousands_flag = True
@@ -468,13 +468,64 @@ lsoa_gdf = gpd.read_file(inputs["London_LSOA_polygons"])
 
 # Calculate road network characteristics in London and add it as an extra variable
 # df columns: 'street_length_total', 'street_density_km', 'intersection_count', 'intersection_density_km'
+# VERY time-consuming: 8 hours on a laptop
 if not os.path.exists(generated["road_net_chars"]):
     # use the function defined in utils: road_net_chars_calculator
-    road_chars = road_net_chars_calculator(lsoa_gdf) # dataframe with road network characteristics
+    road_chars = road_net_chars_calculator(lsoa_gdf) # VERY time-consuming: 8 hours on a laptop
     # save the road network characteristics to a csv file
     road_chars.to_csv(generated["road_net_chars"], index=False)
 else:
     road_chars = pd.read_csv(generated["road_net_chars"])
+
+# ----------------------------------------------------------------------------------------------------------------------
+# MANUAL FIX of "error" LSOAs to avoid another run of the road network characteristics calculation (8 hours run)
+# LSOAs to fix: ['E01000826', 'E01003629', 'E01003730', 'E01004054', 'E01033917']
+
+# Manually enter the correct vales for each column of the LSOAs
+road_chars.loc[road_chars["LSOA21CD"] == "E01000826", "street_length_total"] = 7.524
+road_chars.loc[road_chars["LSOA21CD"] == "E01000826", "street_density_km"] = 7.524/(513343/1000000)
+road_chars.loc[road_chars["LSOA21CD"] == "E01000826", "intersection_count"] = 22.0
+road_chars.loc[road_chars["LSOA21CD"] == "E01000826", "intersection_density_km"] = 22.0/(513343/1000000)
+
+road_chars.loc[road_chars["LSOA21CD"] == "E01003629", "street_length_total"] = 1.241
+road_chars.loc[road_chars["LSOA21CD"] == "E01003629", "street_density_km"] = 1.241/(64471.4/1000000)
+road_chars.loc[road_chars["LSOA21CD"] == "E01003629", "intersection_count"] = 0.0
+road_chars.loc[road_chars["LSOA21CD"] == "E01003629", "intersection_density_km"] = 0.0
+
+road_chars.loc[road_chars["LSOA21CD"] == "E01003730", "street_length_total"] = 2.0
+road_chars.loc[road_chars["LSOA21CD"] == "E01003730", "street_density_km"] = 2.0/(89400.4/1000000)
+road_chars.loc[road_chars["LSOA21CD"] == "E01003730", "intersection_count"] = 2.0
+road_chars.loc[road_chars["LSOA21CD"] == "E01003730", "intersection_density_km"] = 2.0/(89400.4/1000000)
+
+road_chars.loc[road_chars["LSOA21CD"] == "E01004054", "street_length_total"] = 2.575
+road_chars.loc[road_chars["LSOA21CD"] == "E01004054", "street_density_km"] = 2.575/(116254.4/1000000)
+road_chars.loc[road_chars["LSOA21CD"] == "E01004054", "intersection_count"] = 22.0
+road_chars.loc[road_chars["LSOA21CD"] == "E01004054", "intersection_density_km"] = 22.0/(116254.4/1000000)
+
+road_chars.loc[road_chars["LSOA21CD"] == "E01033917", "street_length_total"] = 0.582
+road_chars.loc[road_chars["LSOA21CD"] == "E01033917", "street_density_km"] = 0.582/(32612.5/1000000)
+road_chars.loc[road_chars["LSOA21CD"] == "E01033917", "intersection_count"] = 3.0
+road_chars.loc[road_chars["LSOA21CD"] == "E01033917", "intersection_density_km"] = 3.0/(32612.5/1000000)
+# ----------------------------------------------------------------------------------------------------------------------
+
+# if any of the rows of road_chars contains "error", then print the value of the corresponding LSOA code
+error_flag = True
+error_list = []
+if error_flag == True:
+    for i in range(len(road_chars)):
+        if "error" in road_chars.iloc[i].values:
+            # append the LSOA code to the error list
+            error_list.append(road_chars.iloc[i]["LSOA21CD"])
+            #print("WARNING - There is an error in LSOA: ", road_chars.iloc[i])
+            #print()
+print("LSOAs with errors in road chars: ", error_list)
+print()
+
+# convert the values of the columns to float
+road_chars["street_length_total"] = road_chars["street_length_total"].astype(float)
+road_chars["street_density_km"] = road_chars["street_density_km"].astype(float)
+road_chars["intersection_count"] = road_chars["intersection_count"].astype(float)
+road_chars["intersection_density_km"] = road_chars["intersection_density_km"].astype(float)
 
 # Only keep the 'street_density_km'column
 road_chars = road_chars[["LSOA21CD", "street_density_km"]]
@@ -486,11 +537,26 @@ road_chars.rename(columns={"street_density_km": "RoadKmDen"}, inplace=True)
 analysis_21_24 = analysis_21_24.merge(road_chars, on="LSOA21CD", how="outer")
 
 
+
 # TODO: Create a column with:
 #  independent variables:
-#  2) road network density
 #  3) POI density
 #  REMEMBER: ADD THEM TO THE REGRESSION DF
+
+# check null values in the analysis dataframe
+#print()
+#print("###############################################################################################################")
+#print("Number of missing values in the analysis dataframe:")
+#print(analysis_21_24.isnull().sum())
+#print("###############################################################################################################")
+#print()
+
+# check non-numeric values in the analysis dataframe
+#print("###############################################################################################################")
+#print("Non-numeric values in the analysis dataframe:")
+#print(analysis_21_24.select_dtypes(exclude=[np.number]).columns)
+#print("###############################################################################################################")
+#print()
 
 # Create a df with only the variables for the OLS and GWR analysis
 Regression_21_24 = analysis_21_24[["LSOA21CD",                                               # LSOA code
@@ -523,7 +589,8 @@ if CSCA_2021_2024_flag == True:
                                               "Pop_density",
                                               "RoadKmDen",
                                               "job_th_21", "job_th_23"]]
-    #print(corr_matrix_2021_2024[["job_th_21", "job_th_23"]].head)
+
+    print(corr_matrix_2021_2024)
     plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
