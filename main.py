@@ -334,10 +334,16 @@ analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement"] / a
 analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement_rate"].replace([np.inf, -np.inf], np.nan)
 analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement_rate"].fillna(0)
 
+analysis_21_24["EVCI_improvement_arcsinh"] = np.arcsinh(analysis_21_24["EVCI2024"]) - np.arcsinh(analysis_21_24["EVCI2021"])
+analysis_21_24["EVCI_improvement_rate_arcsinh"] = analysis_21_24["EVCI_improvement_arcsinh"] / np.arcsinh(analysis_21_24["EVCI2021"])
+
 analysis_21_24["EV_licensing_improvement"] = analysis_21_24["y2024Q2"] - analysis_21_24["y2021Q4"]
 analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement"] / analysis_21_24["y2021Q4"]
 analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].replace([np.inf, -np.inf], np.nan)
 analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].fillna(0)
+
+analysis_21_24["EV_licensing_improvement_arcsinh"] = np.arcsinh(analysis_21_24["y2024Q2"]) - np.arcsinh(analysis_21_24["y2021Q4"])
+analysis_21_24["EV_licensing_improvement_rate_arcsinh"] = analysis_21_24["EV_licensing_improvement_arcsinh"] / np.arcsinh(analysis_21_24["y2021Q4"])
 
 # Remove columns
 #analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
@@ -573,21 +579,34 @@ analysis_21_24 = analysis_21_24.merge(POI_lsoa[["LSOA21CD", "POI_dens"]], on="LS
 #print()
 
 # Create a df with only the variables for the OLS and GWR analysis
-Regression_21_24 = analysis_21_24[["LSOA21CD",                                               # LSOA code
-                                   "LSOA21NM",                                               # LSOA name
-                                   "accessibility_21", "accessibility_24", "acc_diff_24_21", # dep var (accessibility)
-                                   "EVCI_improvement", "EVCI_improvement_rate",              # dep var (supply impr)
-                                   "EV_licensing_improvement", "EV_licensing_improvement_rate", # dep var (demand impr)
-                                   "s-ASG_ABC1", "s-ASG_C2DE",                               # ASG
-                                   "s-D3+",                                                  # Deprivation index
-                                   "s-HHcars_01", "s-HHcars_2+",                             # Vehicle ownership
-                                   "s-HHT_owned", "s-HHT_rented",                            # House tenure
-                                   "s-Acc_det-semidet", "s-Acc_flat", "s-Acc_other",         # Accommodation type
-                                   "Med_HP_2021", "Med_HP_2023",                             # Median house prices
-                                   "Pop_density",                                            # Population density
-                                   "RoadKmDen",                                              # Road network (km) density
-                                   "POI_dens",                                               # POI density
-                                   "job_th_21", "job_th_23"]]                                # Thousands of jobs per LSOA
+Regression_21_24 = analysis_21_24[["LSOA21CD",                              # LSOA code
+                                   "LSOA21NM",                              # LSOA name
+                                   "accessibility_21",                      # accessibility 2021
+                                   "accessibility_24",                      # accessibility 2024
+                                   "acc_diff_24_21",                        # dep var (accessibility)
+                                   "EVCI_improvement",                      # supply improvement
+                                   "EVCI_improvement_rate",                 # supply improvement rate
+                                   "EVCI_improvement_rate_arcsinh",         # supply improvement rate arcsinh
+                                   "EV_licensing_improvement",              # demand improvement
+                                   "EV_licensing_improvement_rate",         # demand improvement rate
+                                   "EV_licensing_improvement_rate_arcsinh", # demand improvement rate arcsinh
+                                   "s-ASG_ABC1",                            # ASG AB C1
+                                   "s-ASG_C2DE",                            # ASG C2 DE
+                                   "s-D3+",                                 # HH deprived in 3+ dimensions
+                                   "s-HHcars_01",                           # Vehicle ownership (HH w/ 0 or 1 car)
+                                   "s-HHcars_2+",                           # Vehicle ownership (HH w/ 2+ cars)
+                                   "s-HHT_owned",                           # House tenure: owned
+                                   "s-HHT_rented",                          # House tenure: rented
+                                   "s-Acc_det-semidet",                     # Accommodation type: detached and semidet.
+                                   "s-Acc_flat",                            # Accommodation type: flat
+                                   "s-Acc_other",                           # Accommodation type: terraced and other
+                                   "Med_HP_2021",                           # Median house prices 2021
+                                   "Med_HP_2023",                           # Median house prices 2023
+                                   "Pop_density",                           # Population density
+                                   "RoadKmDen",                             # Road network (km) density
+                                   "POI_dens",                              # POI density
+                                   "job_th_21",                             # Thousands of jobs per LSOA 2021
+                                   "job_th_23"]]                            # Thousands of jobs per LSOA 2023
 
 # Correlation matrix
 CSCA_2021_2024_flag = False
@@ -595,6 +614,8 @@ CSCA_2021_2024_flag = False
 if CSCA_2021_2024_flag == True:
     # create a df for the correlation matrix
     corr_matrix_2021_2024 = Regression_21_24[["accessibility_21", "accessibility_24", "acc_diff_24_21",
+                                              "EVCI_improvement", "EVCI_improvement_rate", "EVCI_improvement_rate_arcsinh",
+                                              "EV_licensing_improvement", "EV_licensing_improvement_rate", "EV_licensing_improvement_rate_arcsinh",
                                               "s-ASG_ABC1", "s-ASG_C2DE",
                                               "s-D3+",
                                               "s-HHcars_01", "s-HHcars_2+",
@@ -628,27 +649,35 @@ if OLS_2021_2024_flag == True:
     Regression_21_24["Med_HP_2023"] = np.log(Regression_21_24["Med_HP_2023"])
 
     # categorise the variables in dependent and independent variables and save the categorisation into two lists:
-    cat_dep_variables = ["accessibility_21", # Accessibility 2021
-                         "accessibility_24", # Accessibility 2024
-                         "acc_diff_24_21"]   # Accessibility difference 2024 - 2021
-                        #"EVCI2021",  # EVCI 2021
-                        #"y2021Q4",   # EV licensing 2021
-                        #"EVCI2024",  # EVCI 2024
-                        #"y2024Q2",   # EV licensing 2024
+    cat_dep_variables = ["accessibility_21",                      # Accessibility 2021
+                         "accessibility_24",                      # Accessibility 2024
+                         "acc_diff_24_21",                        # Accessibility difference 2024 - 2021
+                         #"EVCI_improvement",                     # EVCI (supply) improvement
+                         "EVCI_improvement_rate",                 # EVCI (supply) improvement rate
+                         #"EV_licensing_improvement",             # EV licensing (demand) improvement
+                         "EV_licensing_improvement_rate"]         # EV licensing (demand) improvement rate
+                         #"EVCI2021",                             # EVCI 2021
+                         #"y2021Q4",                              # EV licensing 2021
+                         #"EVCI2024",                             # EVCI 2024
+                         #"y2024Q2"]                              # EV licensing 2024
 
     cat_indep_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
-                           "s-ASG_C2DE",        # Share of HH in social grade C2 and DE
+                           "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
                            "s-D3+",             # Share of HH deprived in 3+ dimensions
-                           "s-HHcars_01",       # Share of HH with 0 or 1 car
+                           "s-HHcars_01",      # Share of HH with 0 or 1 car
                            "s-HHcars_2+",       # Share of HH with 2+ cars
                            "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
-                           "s-HHT_rented",      # share of HH renting
+                           "s-HHT_rented",     # share of HH renting
                            "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
                            "s-Acc_flat",        # Share of HH living in flats
                            "s-Acc_other",       # Share of HH living in terraced & other houses
-                           "Med_HP_2021",       # Median house prices 2021 (December)
+                           "Med_HP_2021",      # Median house prices 2021 (December)
                            "Med_HP_2023",       # Median house prices 2023 (March)
-                           "Pop_density"]       # Population density (thousands)
+                           "Pop_density",       # Population density (thousands)
+                           "RoadKmDen",         # Road network (km) density
+                           "POI_dens",          # POI density
+                           "job_th_21",         # Thousands of jobs per LSOA in 2021
+                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
 
     ''' # if using total counts instead of shares:
                            "Med_HP_2021",             # Median house prices 2021 (December)
@@ -750,18 +779,23 @@ if OLS_2021_2024_flag == True:
     # OLS for ACCESSIBILITY 2021
     dependent_variable = "accessibility_21"
     independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
-                              "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
-                              "s-D3+",             # Share of HH deprived in 3+ dimensions
-                              "s-HHcars_01",      # Share of HH with 0 or 1 car
-                              "s-HHcars_2+",       # Share of HH with 2+ cars
-                              "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
-                              "s-HHT_rented",     # share of HH renting
-                              "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
-                              "s-Acc_flat",        # Share of HH living in flats
-                              "s-Acc_other",       # Share of HH living in terraced & other houses
-                              "Med_HP_2021",       # Median house prices 2021 (December)
-                              #"Med_HP_2023",      # Median house prices 2023 (March)
-                              "Pop_density"]      # Population density (thousands)
+                           "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+                           "s-D3+",             # Share of HH deprived in 3+ dimensions
+                           "s-HHcars_01",      # Share of HH with 0 or 1 car
+                           "s-HHcars_2+",       # Share of HH with 2+ cars
+                           "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                           "s-HHT_rented",     # share of HH renting
+                           "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                           "s-Acc_flat",        # Share of HH living in flats
+                           "s-Acc_other",       # Share of HH living in terraced & other houses
+                           "Med_HP_2021",      # Median house prices 2021 (December)
+                           #"Med_HP_2023",       # Median house prices 2023 (March)
+                           "Pop_density",       # Population density (thousands)
+                           "RoadKmDen",         # Road network (km) density
+                           "POI_dens",          # POI density
+                           "job_th_21"]         # Thousands of jobs per LSOA in 2021
+                           #"job_th_23"]         # Thousands of jobs per LSOA in 2023
+
 
     ''' # if considering total counts instead of shares:
                               "Med_HP_2021",          # Median house prices 2021 (December)
@@ -829,18 +863,22 @@ if OLS_2021_2024_flag == True:
     # OLS for ACCESSIBILITY 2024
     dependent_variable = "accessibility_24"
     independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
-                              "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
-                              "s-D3+",             # Share of HH deprived in 3+ dimensions
-                              "s-HHcars_01",      # Share of HH with 0 or 1 car
-                              "s-HHcars_2+",       # Share of HH with 2+ cars
-                              "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
-                              "s-HHT_rented",     # share of HH renting
-                              "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
-                              "s-Acc_flat",        # Share of HH living in flats
-                              "s-Acc_other",      # Share of HH living in terraced & other houses
-                              #"Med_HP_2021",      # Median house prices 2021 (December)
-                              "Med_HP_2023",       # Median house prices 2023 (March)
-                              "Pop_density"]      # Population density (thousands)
+                           "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+                           "s-D3+",             # Share of HH deprived in 3+ dimensions
+                           "s-HHcars_01",      # Share of HH with 0 or 1 car
+                           "s-HHcars_2+",       # Share of HH with 2+ cars
+                           "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                           "s-HHT_rented",     # share of HH renting
+                           "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                           "s-Acc_flat",        # Share of HH living in flats
+                           "s-Acc_other",       # Share of HH living in terraced & other houses
+                           #"Med_HP_2021",      # Median house prices 2021 (December)
+                           "Med_HP_2023",       # Median house prices 2023 (March)
+                           "Pop_density",       # Population density (thousands)
+                           "RoadKmDen",         # Road network (km) density
+                           "POI_dens",          # POI density
+                           #"job_th_21"]         # Thousands of jobs per LSOA in 2021
+                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
 
     ''' # if considering total counts instead of shares:
                             [["Med_HP_2023",          # Median house prices 2021 (December)
@@ -865,18 +903,22 @@ if OLS_2021_2024_flag == True:
     # OLS for ACCESSIBILITY DIFFERENCE 2024-2021
     dependent_variable = "acc_diff_24_21"
     independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
-                              "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
-                              "s-D3+",             # Share of HH deprived in 3+ dimensions
-                              "s-HHcars_01",      # Share of HH with 0 or 1 car
-                              "s-HHcars_2+",       # Share of HH with 2+ cars
-                              "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
-                              "s-HHT_rented",     # share of HH renting
-                              "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
-                              "s-Acc_flat",        # Share of HH living in flats
-                              "s-Acc_other",       # Share of HH living in terraced & other houses
-                              #"Med_HP_2021",      # Median house prices 2021 (December)
-                              "Med_HP_2023",       # Median house prices 2023 (March)
-                              "Pop_density"]      # Population density (thousands)
+                           "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
+                           "s-D3+",             # Share of HH deprived in 3+ dimensions
+                           "s-HHcars_01",      # Share of HH with 0 or 1 car
+                           "s-HHcars_2+",       # Share of HH with 2+ cars
+                           "s-HHT_owned",       # share of HH owning outright + mortgage + shared ownership
+                           "s-HHT_rented",     # share of HH renting
+                           "s-Acc_det-semidet", # Share of HH living in detached and semidetached houses
+                           "s-Acc_flat",        # Share of HH living in flats
+                           "s-Acc_other",       # Share of HH living in terraced & other houses
+                           #"Med_HP_2021",      # Median house prices 2021 (December)
+                           "Med_HP_2023",       # Median house prices 2023 (March)
+                           "Pop_density",       # Population density (thousands)
+                           "RoadKmDen",         # Road network (km) density
+                           "POI_dens",          # POI density
+                           #"job_th_21"]         # Thousands of jobs per LSOA in 2021
+                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
 
     ''' # if considering total counts instead of shares:
                             [["Med_HP_2023",          # Median house prices 2021 (December)
@@ -896,6 +938,8 @@ if OLS_2021_2024_flag == True:
 
     # save the summary table
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
+
+    # __________________________________________________________________________________________________________________
 
 ########################################################################################################################
 # GWR analysis
@@ -944,16 +988,22 @@ if GWR_flag == True:
 
     # categorise the variables in dependent and independent variables and save the categorisation into two lists:
     cat_dep_variables = [
-                         #"EVCI2021",         # EVCI 2021
-                         #"y2021Q4",          # EV licensing 2021
-                         #"EVCI2024",         # EVCI 2024
-                         #"y2024Q2",          # EV licensing 2024
-                         #"accessibility_21", # Accessibility 2021
-                         #"accessibility_24", # Accessibility 2024
-                         #"acc_diff_24_21",   # Accessibility difference 2024 - 2021
-                         "accessibility_21_arcsinh",
-                         "accessibility_24_arcsinh",
-                         "acc_diff_24_21_arcsinh"]
+                         #"EVCI2021",                     # EVCI 2021
+                         #"y2021Q4",                      # EV licensing 2021
+                         #"EVCI2024",                     # EVCI 2024
+                         #"y2024Q2",                      # EV licensing 2024
+                         #"accessibility_21",             # Accessibility 2021
+                         #"accessibility_24",             # Accessibility 2024
+                         #"acc_diff_24_21",               # Accessibility difference 2024 - 2021
+                         "accessibility_21_arcsinh",      # Accessibility 2021 arcsinh
+                         "accessibility_24_arcsinh",      # Accessibility 2024 arcsinh
+                         "acc_diff_24_21_arcsinh",        # Accessibility difference 2024 - 2021 arcsinh
+                         #"EVCI_improvement",             # EVCI (supply) improvement
+                         #"EVCI_improvement_rate",         # EVCI (supply) improvement rate
+                         "EVCI_improvement_rate_arcsinh",  # EVCI (supply) improvement rate
+                         #"EV_licensing_improvement",     # EV licensing (demand) improvement
+                         #"EV_licensing_improvement_rate",  # EV licensing (demand) improvement rate
+                         "EV_licensing_improvement_rate_arcsinh"] # EV licensing (demand) improvement rate
 
     cat_indep_variables = [#"s-ASG_ABC1",        # Share of HH in social grade AB and C1
                            "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
@@ -967,7 +1017,11 @@ if GWR_flag == True:
                            "s-Acc_other",       # Share of HH living in terraced & other houses
                            #"Med_HP_2021",      # Median house prices 2021 (December)
                            "Med_HP_2023",       # Median house prices 2023 (March)
-                           "Pop_density"]       # Population density (thousands)
+                           "Pop_density",       # Population density (thousands)
+                           "RoadKmDen",         # Road network (km) density
+                           "POI_dens",          # POI density
+                           "job_th_21",         # Thousands of jobs per LSOA in 2021
+                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
 
     ''' # if considering total counts instead of shares:        
                            "Med_HP_2021",             # Median house prices 2021 (December)
@@ -1066,8 +1120,7 @@ if GWR_flag == True:
 
         # create a gdf with the local R2 values
         Regression_21_24_R2 = Regression_21_24[["LSOA21CD",
-                                                "LSOA21NM",
-                                                "s-ASG_ABC1",
+                                                "LSOA21NM","s-ASG_ABC1",
                                                 # "s-ASG_C2DE",
                                                 "s-D3+",
                                                 # "s-HHcars_01",
@@ -1080,6 +1133,10 @@ if GWR_flag == True:
                                                 # "Med_HP_2021",
                                                 "Med_HP_2023",
                                                 "Pop_density",
+                                                "RoadKmDen",
+                                                "POI_dens",
+                                                "job_th_21",
+                                                "job_th_23",
                                                 "geometry",
                                                 "x",
                                                 "y",
@@ -1193,9 +1250,13 @@ if GWR_flag == True:
 ########################################################################################################################
 # Check the distribution of the dependent variables
 check_distribution_flag = False
-variables_to_test = Regression_21_24[["accessibility_21_arcsinh",
-                                      "accessibility_24_arcsinh",
-                                      "acc_diff_24_21_arcsinh"]]   # Accessibility difference 2024 - 2021
+variables_to_test = Regression_21_24[[#"accessibility_21_arcsinh",
+                                      #"accessibility_24_arcsinh",
+                                      #"acc_diff_24_21_arcsinh",
+                                      #"EVCI_improvement_rate",
+                                      #"EV_licensing_improvement_rate",
+                                      "EVCI_improvement_rate_arcsinh",
+                                      "EV_licensing_improvement_rate_arcsinh"]]
 
 # plot the distribution of the dependent variables without using sns
 if check_distribution_flag == True:
@@ -1209,7 +1270,7 @@ if check_distribution_flag == True:
         plt.show()
 
 # Check normality of the dependent variables
-check_normality_flag = False
+check_normality_flag = True
 if check_normality_flag == True:
     from scipy import stats
     for var in variables_to_test:
@@ -1227,7 +1288,7 @@ if check_normality_flag == True:
 
 ########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
-calculate_Gini_flag = True
+calculate_Gini_flag = False
 
 if calculate_Gini_flag == True:
     # Load the accessibility data, make them numpy arrays
