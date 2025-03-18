@@ -332,7 +332,7 @@ analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] - analysis
 analysis_21_24["EVCI_improvement"] = analysis_21_24["EVCI2024"] - analysis_21_24["EVCI2021"]
 analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement"] / analysis_21_24["EVCI2021"]
 analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement_rate"].replace([np.inf, -np.inf], np.nan)
-analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement_rate"].fillna(0)
+#analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement_rate"].fillna(0)
 
 analysis_21_24["EVCI_improvement_arcsinh"] = np.arcsinh(analysis_21_24["EVCI2024"]) - np.arcsinh(analysis_21_24["EVCI2021"])
 analysis_21_24["EVCI_improvement_rate_arcsinh"] = analysis_21_24["EVCI_improvement_arcsinh"] / np.arcsinh(analysis_21_24["EVCI2021"])
@@ -340,7 +340,66 @@ analysis_21_24["EVCI_improvement_rate_arcsinh"] = analysis_21_24["EVCI_improveme
 analysis_21_24["EV_licensing_improvement"] = analysis_21_24["y2024Q2"] - analysis_21_24["y2021Q4"]
 analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement"] / analysis_21_24["y2021Q4"]
 analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].replace([np.inf, -np.inf], np.nan)
-analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].fillna(0)
+#analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].fillna(0)
+
+
+''' ### TESTS FOR NORMALITY OF THE VARIABLES
+from sklearn.preprocessing import MinMaxScaler
+from scipy.stats import norm
+# calculate mean and standard deviation of EV_licensing_improvement_rate
+# remove NaN values
+analysis_21_24 = analysis_21_24.dropna(subset=["EV_licensing_improvement"])
+
+mean_EV_licensing_improvement_rate = analysis_21_24["EV_licensing_improvement"].mean()
+std_EV_licensing_improvement_rate = analysis_21_24["EV_licensing_improvement"].std()
+
+print(mean_EV_licensing_improvement_rate, std_EV_licensing_improvement_rate)
+
+#analysis_21_24["EV_licensing_improvement_NORM"] = (analysis_21_24["EV_licensing_improvement"]-mean_EV_licensing_improvement_rate)/std_EV_licensing_improvement_rate
+
+scaler= MinMaxScaler()
+
+analysis_21_24["EV_licensing_improvement_NORM"] = scaler.fit_transform(analysis_21_24["EV_licensing_improvement"].values.reshape(-1,1))
+print(analysis_21_24["EV_licensing_improvement_NORM"])
+# count homw many nan values are in the column
+print(analysis_21_24["EV_licensing_improvement_NORM"].isnull().sum())
+
+mean_EV_licensing_improvement_NORM_rate = analysis_21_24["EV_licensing_improvement_NORM"].mean()
+std_EV_licensing_improvement_NORM_rate = analysis_21_24["EV_licensing_improvement_NORM"].std()
+# print the mean and standard deviation of the normalized variable
+print("NORM variable" , mean_EV_licensing_improvement_NORM_rate, std_EV_licensing_improvement_NORM_rate)
+
+# remove NaN values
+analysis_21_24 = analysis_21_24.dropna(subset=["EV_licensing_improvement_NORM"])
+
+hist, bins = np.histogram(analysis_21_24["EV_licensing_improvement_NORM"], bins=200, density= True)
+x = (bins[1:] + bins[:-1]) / 2
+x_gauss = np.linspace(-5, 5, 100)
+pdf_gauss = norm.pdf(x_gauss, loc=0, scale=1)
+plt.semilogy(x, hist)
+plt.semilogy(x_gauss, pdf_gauss, 'r')
+plt.show()
+
+
+variables_to_test = analysis_21_24[["EV_licensing_improvement_NORM"]]
+
+# Check normality of the dependent variables
+check_normality_flag = True
+if check_normality_flag == True:
+    from scipy import stats
+    for var in variables_to_test:
+        # Shapiro-Wilk test for normality
+        stat, p = stats.shapiro(analysis_21_24[var])
+        print("--------------------------------------------")
+        print(f"Shapiro-Wilk test for normality for {var}:")
+        print(f"Statistics={stat:.3f}, p={p:.3f}")
+        # Interpret
+        alpha = 0.05
+        if p > alpha:
+            print(f"{var} sample looks Gaussian (fail to reject H0)")
+        else:
+            print(f"{var} sample does not look Gaussian (reject H0)")
+'''
 
 analysis_21_24["EV_licensing_improvement_arcsinh"] = np.arcsinh(analysis_21_24["y2024Q2"]) - np.arcsinh(analysis_21_24["y2021Q4"])
 analysis_21_24["EV_licensing_improvement_rate_arcsinh"] = analysis_21_24["EV_licensing_improvement_arcsinh"] / np.arcsinh(analysis_21_24["y2021Q4"])
@@ -629,7 +688,7 @@ if CSCA_2021_2024_flag == True:
     plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 
 # OLS analysis
-OLS_2021_2024_flag = False
+OLS_2021_2024_flag = True
 # Normalisation options:
 #normalise_dependent_variables = False
 #normalise_independent_variables = False
@@ -940,12 +999,60 @@ if OLS_2021_2024_flag == True:
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
 
     # __________________________________________________________________________________________________________________
+    # OLS for EVCI SUPPLY IMPROVEMENT RATE
+    dependent_variable = "EVCI_improvement_rate"
+    independent_variables = ["s-ASG_ABC1",  # Share of HH in social grade AB and C1
+                             "s-ASG_C2DE",  # Share of HH in social grade C2 and DE
+                             "s-D3+",  # Share of HH deprived in 3+ dimensions
+                             "s-HHcars_01",  # Share of HH with 0 or 1 car
+                             "s-HHcars_2+",  # Share of HH with 2+ cars
+                             "s-HHT_owned",  # share of HH owning outright + mortgage + shared ownership
+                             "s-HHT_rented",  # share of HH renting
+                             "s-Acc_det-semidet",  # Share of HH living in detached and semidetached houses
+                             "s-Acc_flat",  # Share of HH living in flats
+                             "s-Acc_other",  # Share of HH living in terraced & other houses
+                             # "Med_HP_2021",      # Median house prices 2021 (December)
+                             "Med_HP_2023",  # Median house prices 2023 (March)
+                             "Pop_density",  # Population density (thousands)
+                             "RoadKmDen",  # Road network (km) density
+                             "POI_dens",  # POI density
+                             # "job_th_21"]         # Thousands of jobs per LSOA in 2021
+                             "job_th_23"]  # Thousands of jobs per LSOA in 2023
+    supp_impr_rate_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+
+    # save the summary table
+    supp_impr_rate_summary_table_24_21.to_csv(outputs["OLS_supply_improvement_rate"], index=False)
+
+    # __________________________________________________________________________________________________________________
+    # OLS for EVCI DEMAND IMPROVEMENT RATE
+    dependent_variable = "EV_licensing_improvement_rate"
+    independent_variables = ["s-ASG_ABC1",  # Share of HH in social grade AB and C1
+                             "s-ASG_C2DE",  # Share of HH in social grade C2 and DE
+                             "s-D3+",  # Share of HH deprived in 3+ dimensions
+                             "s-HHcars_01",  # Share of HH with 0 or 1 car
+                             "s-HHcars_2+",  # Share of HH with 2+ cars
+                             "s-HHT_owned",  # share of HH owning outright + mortgage + shared ownership
+                             "s-HHT_rented",  # share of HH renting
+                             "s-Acc_det-semidet",  # Share of HH living in detached and semidetached houses
+                             "s-Acc_flat",  # Share of HH living in flats
+                             "s-Acc_other",  # Share of HH living in terraced & other houses
+                             # "Med_HP_2021",      # Median house prices 2021 (December)
+                             "Med_HP_2023",  # Median house prices 2023 (March)
+                             "Pop_density",  # Population density (thousands)
+                             "RoadKmDen",  # Road network (km) density
+                             "POI_dens",  # POI density
+                             # "job_th_21"]         # Thousands of jobs per LSOA in 2021
+                             "job_th_23"]  # Thousands of jobs per LSOA in 2023
+    dem_impr_rate_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+
+    # save the summary table
+    dem_impr_rate_summary_table_24_21.to_csv(outputs["OLS_demand_improvement_rate"], index=False)
 
 ########################################################################################################################
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GWR_flag = False
+GWR_flag = True
 # Normalisation options:
 normalise_dependent_variables = False
 normalise_independent_variables = False
@@ -995,15 +1102,24 @@ if GWR_flag == True:
                          #"accessibility_21",             # Accessibility 2021
                          #"accessibility_24",             # Accessibility 2024
                          #"acc_diff_24_21",               # Accessibility difference 2024 - 2021
-                         "accessibility_21_arcsinh",      # Accessibility 2021 arcsinh
-                         "accessibility_24_arcsinh",      # Accessibility 2024 arcsinh
-                         "acc_diff_24_21_arcsinh",        # Accessibility difference 2024 - 2021 arcsinh
+                         #"accessibility_21_arcsinh",      # Accessibility 2021 arcsinh
+                         #"accessibility_24_arcsinh",      # Accessibility 2024 arcsinh
+                         #"acc_diff_24_21_arcsinh",        # Accessibility difference 2024 - 2021 arcsinh
                          #"EVCI_improvement",             # EVCI (supply) improvement
-                         #"EVCI_improvement_rate",         # EVCI (supply) improvement rate
-                         "EVCI_improvement_rate_arcsinh",  # EVCI (supply) improvement rate
+                         "EVCI_improvement_rate",         # EVCI (supply) improvement rate
+                         #"EVCI_improvement_rate_arcsinh",  # EVCI (supply) improvement rate
                          #"EV_licensing_improvement",     # EV licensing (demand) improvement
-                         #"EV_licensing_improvement_rate",  # EV licensing (demand) improvement rate
-                         "EV_licensing_improvement_rate_arcsinh"] # EV licensing (demand) improvement rate
+                         "EV_licensing_improvement_rate"]  # EV licensing (demand) improvement rate
+                         #"EV_licensing_improvement_rate_arcsinh"] # EV licensing (demand) improvement rat
+
+    # if any of the dependent variables have nans, drop them
+    # check if there are any nans in the dependent variables, if so, print a warning
+    if Regression_21_24[cat_dep_variables].isnull().values.any():
+        print("---------------------------------------------------------------------")
+        print("WARNING: there are NaNs in the dependent variables. Dropping them...")
+        print("---------------------------------------------------------------------")
+        Regression_21_24 = Regression_21_24.dropna(subset=cat_dep_variables)
+
 
     cat_indep_variables = [#"s-ASG_ABC1",        # Share of HH in social grade AB and C1
                            "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
@@ -1020,7 +1136,7 @@ if GWR_flag == True:
                            "Pop_density",       # Population density (thousands)
                            "RoadKmDen",         # Road network (km) density
                            "POI_dens",          # POI density
-                           "job_th_21",         # Thousands of jobs per LSOA in 2021
+                           #"job_th_21",         # Thousands of jobs per LSOA in 2021
                            "job_th_23"]         # Thousands of jobs per LSOA in 2023
 
     ''' # if considering total counts instead of shares:        
@@ -1110,7 +1226,8 @@ if GWR_flag == True:
         fig = ax.get_figure()
         sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap='viridis')
         sm._A = []
-        fig.colorbar(sm)
+        #fig.colorbar(sm)
+        cbar = fig.colorbar(sm, ax=ax) # This ensures the colorbar is linked to the correct axis
 
         _ = ax.axis('off')
 
@@ -1135,7 +1252,7 @@ if GWR_flag == True:
                                                 "Pop_density",
                                                 "RoadKmDen",
                                                 "POI_dens",
-                                                "job_th_21",
+                                                #"job_th_21",
                                                 "job_th_23",
                                                 "geometry",
                                                 "x",
@@ -1232,7 +1349,8 @@ if GWR_flag == True:
                 # Add colorbar
                 sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
                 sm._A = []
-                fig.colorbar(sm)
+                # fig.colorbar(sm)
+                cbar = fig.colorbar(sm, ax=ax)  # This ensures the colorbar is linked to the correct axis
 
                 _ = ax.axis('off')
 
@@ -1250,13 +1368,17 @@ if GWR_flag == True:
 ########################################################################################################################
 # Check the distribution of the dependent variables
 check_distribution_flag = False
-variables_to_test = Regression_21_24[[#"accessibility_21_arcsinh",
-                                      #"accessibility_24_arcsinh",
-                                      #"acc_diff_24_21_arcsinh",
+variables_to_test = Regression_21_24[["accessibility_21_arcsinh",
+                                      "accessibility_24_arcsinh",
+                                      "acc_diff_24_21_arcsinh"]]
+                                      #"EVCI_improvement",
+                                      #"EV_licensing_improvement"]]
                                       #"EVCI_improvement_rate",
                                       #"EV_licensing_improvement_rate",
-                                      "EVCI_improvement_rate_arcsinh",
-                                      "EV_licensing_improvement_rate_arcsinh"]]
+                                      #"EVCI_improvement_rate_arcsinh",
+                                      #"EV_licensing_improvement_rate_arcsinh"]]
+
+#plot probability distribution function
 
 # plot the distribution of the dependent variables without using sns
 if check_distribution_flag == True:
@@ -1270,7 +1392,7 @@ if check_distribution_flag == True:
         plt.show()
 
 # Check normality of the dependent variables
-check_normality_flag = True
+check_normality_flag = False
 if check_normality_flag == True:
     from scipy import stats
     for var in variables_to_test:
@@ -1365,3 +1487,4 @@ if calculate_Gini_flag == True:
     print(f"Gini Index for 2024: {gini_2024}")
 
 ########################################################################################################################
+

@@ -37,5 +37,7 @@ outputs["OLS_supply_2024"] = "./output-data/OLS_supply_2024.csv"
 outputs["OLS_demand_2024"] = "./output-data/OLS_demand_2024.csv"
 outputs["OLS_accessibility_2024"] = "./output-data/OLS_accessibility_2024.csv"
 outputs["OLS_diff_accessibility_21_24"] = "./output-data/OLS_diff_accessibility_21_24.csv"
+outputs["OLS_supply_improvement_rate"] = "./output-data/OLS_supply_improvement_rate.csv"
+outputs["OLS_demand_improvement_rate"] = "./output-data/OLS_demand_improvement_rate.csv"
 
 
