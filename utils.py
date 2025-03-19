@@ -112,7 +112,8 @@ def plt_and_save_corr_matrix(analysis_df, output_file_name):
 
     # Plot the correlation matrix with a 'coolwarm' color map
     corr_matrix = analysis_df.corr(method='pearson')
-    plt.matshow(corr_matrix, fignum=f.number, cmap='RdBu_r')
+    #plt.matshow(corr_matrix, fignum=f.number, cmap='RdBu_r')
+    plt.matshow(corr_matrix, cmap='RdBu_r')
 
     # Add a color bar using the same color map as the heatmap
     cb = plt.colorbar()

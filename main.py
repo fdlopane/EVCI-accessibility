@@ -328,6 +328,10 @@ analysis_21_24["accessibility_21"] = analysis_21_24["EVCI2021"] / analysis_21_24
 analysis_21_24["accessibility_24"] = analysis_21_24["EVCI2024"] / analysis_21_24["y2024Q2"]
 analysis_21_24["acc_diff_24_21"] = analysis_21_24["accessibility_24"] - analysis_21_24["accessibility_21"]
 
+# replace zeroes with very small numbers in EVCI2021 and y2021Q4 to avoid division by zero
+analysis_21_24["EVCI2021"] = analysis_21_24["EVCI2021"].replace(0, 0.0000001)
+analysis_21_24["y2021Q4"] = analysis_21_24["y2021Q4"].replace(0, 0.0000001)
+
 # Create demand and supply improvements between 2021 and 2024
 analysis_21_24["EVCI_improvement"] = analysis_21_24["EVCI2024"] - analysis_21_24["EVCI2021"]
 analysis_21_24["EVCI_improvement_rate"] = analysis_21_24["EVCI_improvement"] / analysis_21_24["EVCI2021"]
@@ -342,6 +346,8 @@ analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_i
 analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].replace([np.inf, -np.inf], np.nan)
 #analysis_21_24["EV_licensing_improvement_rate"] = analysis_21_24["EV_licensing_improvement_rate"].fillna(0)
 
+analysis_21_24["EV_licensing_improvement_arcsinh"] = np.arcsinh(analysis_21_24["y2024Q2"]) - np.arcsinh(analysis_21_24["y2021Q4"])
+analysis_21_24["EV_licensing_improvement_rate_arcsinh"] = analysis_21_24["EV_licensing_improvement_arcsinh"] / np.arcsinh(analysis_21_24["y2021Q4"])
 
 ''' ### TESTS FOR NORMALITY OF THE VARIABLES
 from sklearn.preprocessing import MinMaxScaler
@@ -400,9 +406,6 @@ if check_normality_flag == True:
         else:
             print(f"{var} sample does not look Gaussian (reject H0)")
 '''
-
-analysis_21_24["EV_licensing_improvement_arcsinh"] = np.arcsinh(analysis_21_24["y2024Q2"]) - np.arcsinh(analysis_21_24["y2021Q4"])
-analysis_21_24["EV_licensing_improvement_rate_arcsinh"] = analysis_21_24["EV_licensing_improvement_arcsinh"] / np.arcsinh(analysis_21_24["y2021Q4"])
 
 # Remove columns
 #analysis_21_24.drop(columns=["LSOA21CD", "LSOA21NM", "HH_number", "EVCI2021", "y2021Q4"], inplace=True)
@@ -662,10 +665,11 @@ Regression_21_24 = analysis_21_24[["LSOA21CD",                              # LS
                                    "Med_HP_2021",                           # Median house prices 2021
                                    "Med_HP_2023",                           # Median house prices 2023
                                    "Pop_density",                           # Population density
-                                   "RoadKmDen",                             # Road network (km) density
-                                   "POI_dens",                              # POI density
-                                   "job_th_21",                             # Thousands of jobs per LSOA 2021
-                                   "job_th_23"]]                            # Thousands of jobs per LSOA 2023
+                                   "POI_dens"]]                             # POI density
+                                   # don't consider the following variables as not statistically significant
+                                   #"RoadKmDen",                             # Road network (km) density
+                                   #"job_th_21",                             # Thousands of jobs per LSOA 2021
+                                   #"job_th_23"]]                            # Thousands of jobs per LSOA 2023
 
 # rename columns longer than 10 characters
 Regression_21_24.rename(columns={"accessibility_21": "acc_21",
@@ -686,28 +690,8 @@ Regression_21_24.rename(columns={"accessibility_21": "acc_21",
                                  "Med_HP_2023": "Med_HP_23",
                                  "Pop_density": "Pop_dens"}, inplace=True)
 
-# Correlation matrix
-CSCA_2021_2024_flag = False
-
-if CSCA_2021_2024_flag == True:
-    # create a df for the correlation matrix
-    corr_matrix_2021_2024 = Regression_21_24[["accessibility_21", "accessibility_24", "acc_diff_24_21",
-                                              "EVCI_improvement", "EVCI_improvement_rate", "EVCI_improvement_rate_arcsinh",
-                                              "EV_licensing_improvement", "EV_licensing_improvement_rate", "EV_licensing_improvement_rate_arcsinh",
-                                              "s-ASG_ABC1", "s-ASG_C2DE",
-                                              "s-D3+",
-                                              "s-HHcars_01", "s-HHcars_2+",
-                                              "s-HHT_owned", "s-HHT_rented",
-                                              "s-Acc_det-semidet", "s-Acc_flat", "s-Acc_other",
-                                              "Med_HP_2021", "Med_HP_2023",
-                                              "Pop_density",
-                                              "RoadKmDen",
-                                              "POI_dens",
-                                              "job_th_21", "job_th_23"]]
-    plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
-
 # OLS analysis
-OLS_2021_2024_flag = False
+OLS_2021_2024_flag = True
 # Normalisation options:
 #normalise_dependent_variables = False
 #normalise_independent_variables = False
@@ -731,9 +715,9 @@ if OLS_2021_2024_flag == True:
                          "acc_24",                      # Accessibility 2024
                          "acc_diff",                        # Accessibility difference 2024 - 2021
                          #"s_impr",                     # EVCI (supply) improvement
-                         "s_impr_rate",                 # EVCI (supply) improvement rate
+                         "s_imp_rate",                 # EVCI (supply) improvement rate
                          #"d_impr",             # EV licensing (demand) improvement
-                         "d_impr_rate"]         # EV licensing (demand) improvement rate
+                         "d_imp_rate"]         # EV licensing (demand) improvement rate
                          #"EVCI2021",                             # EVCI 2021
                          #"y2021Q4",                              # EV licensing 2021
                          #"EVCI2024",                             # EVCI 2024
@@ -752,10 +736,19 @@ if OLS_2021_2024_flag == True:
                            "Med_HP_21",      # Median house prices 2021 (December)
                            "Med_HP_23",       # Median house prices 2023 (March)
                            "Pop_dens",       # Population density (thousands)
-                           "RoadKmDen",         # Road network (km) density
-                           "POI_dens",          # POI density
-                           "job_th_21",         # Thousands of jobs per LSOA in 2021
-                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
+                           #"RoadKmDen",         # Road network (km) density
+                           "POI_dens"]          # POI density
+                           #"job_th_21",         # Thousands of jobs per LSOA in 2021
+                            #"job_th_23"]         # Thousands of jobs per LSOA in 2023
+
+    # use min max scaling for all the variables
+    for i in cat_indep_variables:
+        Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                Regression_21_24[i].max() - Regression_21_24[i].min())
+
+    for i in cat_dep_variables:
+        Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                Regression_21_24[i].max() - Regression_21_24[i].min())
 
     ''' # if using total counts instead of shares:
                            "Med_HP_2021",             # Median house prices 2021 (December)
@@ -869,9 +862,9 @@ if OLS_2021_2024_flag == True:
                            "Med_HP_21",      # Median house prices 2021 (December)
                            #"Med_HP_23",       # Median house prices 2023 (March)
                            "Pop_dens",       # Population density (thousands)
-                           "RoadKmDen",         # Road network (km) density
-                           "POI_dens",          # POI density
-                           "job_th_21"]         # Thousands of jobs per LSOA in 2021
+                           #"RoadKmDen",         # Road network (km) density
+                           "POI_dens"]          # POI density
+                           #"job_th_21"]         # Thousands of jobs per LSOA in 2021
                            #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
 
@@ -939,10 +932,10 @@ if OLS_2021_2024_flag == True:
                            #"Med_HP_21",      # Median house prices 2021 (December)
                            "Med_HP_23",       # Median house prices 2023 (March)
                            "Pop_dens",       # Population density (thousands)
-                           "RoadKmDen",         # Road network (km) density
-                           "POI_dens",          # POI density
+                           #"RoadKmDen",         # Road network (km) density
+                           "POI_dens"]          # POI density
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
-                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
+                           #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
 
     ''' # if considering total counts instead of shares:
@@ -980,10 +973,10 @@ if OLS_2021_2024_flag == True:
                            #"Med_HP_21",      # Median house prices 2021 (December)
                            "Med_HP_23",       # Median house prices 2023 (March)
                            "Pop_dens",       # Population density (thousands)
-                           "RoadKmDen",         # Road network (km) density
-                           "POI_dens",          # POI density
+                           #"RoadKmDen",         # Road network (km) density
+                           "POI_dens"]          # POI density
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
-                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
+                           #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
     acc_diff_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
 
@@ -1006,10 +999,10 @@ if OLS_2021_2024_flag == True:
                            #"Med_HP_21",      # Median house prices 2021 (December)
                            "Med_HP_23",       # Median house prices 2023 (March)
                            "Pop_dens",       # Population density (thousands)
-                           "RoadKmDen",         # Road network (km) density
-                           "POI_dens",          # POI density
+                           #"RoadKmDen",         # Road network (km) density
+                           "POI_dens"]          # POI density
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
-                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
+                           #"job_th_23"]         # Thousands of jobs per LSOA in 2023
     supp_impr_rate_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
 
     # save the summary table
@@ -1031,10 +1024,10 @@ if OLS_2021_2024_flag == True:
                            #"Med_HP_21",      # Median house prices 2021 (December)
                            "Med_HP_23",       # Median house prices 2023 (March)
                            "Pop_dens",       # Population density (thousands)
-                           "RoadKmDen",         # Road network (km) density
-                           "POI_dens",          # POI density
+                           #"RoadKmDen",         # Road network (km) density
+                           "POI_dens"]          # POI density
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
-                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
+                           #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
 
     dem_impr_rate_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
@@ -1093,9 +1086,9 @@ if GWR_flag == True:
                          #"y2021Q4",                               # EV licensing 2021
                          #"EVCI2024",                              # EVCI 2024
                          #"y2024Q2",                               # EV licensing 2024
-                         #"acc_21",                                # Accessibility 2021
-                         #"acc_24",                                # Accessibility 2024
-                         #"acc_diff"]                              # Accessibility difference 2024 - 2021
+                         "acc_21",                                # Accessibility 2021
+                         "acc_24",                                # Accessibility 2024
+                         "acc_diff",                              # Accessibility difference 2024 - 2021
                          #"accessibility_21_arcsinh",              # Accessibility 2021 arcsinh
                          #"accessibility_24_arcsinh",              # Accessibility 2024 arcsinh
                          #"acc_diff_24_21_arcsinh",                # Accessibility difference 2024 - 2021 arcsinh
@@ -1129,11 +1122,18 @@ if GWR_flag == True:
                            "Med_HP_23",       # Median house prices 2023 (March)
                            "Pop_dens",       # Population density (thousands)
                            #"RoadKmDen",         # Road network (km) density
-                           "POI_dens",          # POI density
+                           "POI_dens"]          # POI density
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
-                           "job_th_23"]         # Thousands of jobs per LSOA in 2023
+                           #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
-    # TODO: scale the variables between 0 and 1
+    # use min max scaling for all the variables
+    for i in cat_indep_variables:
+        Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                Regression_21_24[i].max() - Regression_21_24[i].min())
+
+    for i in cat_dep_variables:
+        Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
+                Regression_21_24[i].max() - Regression_21_24[i].min())
 
     # plot min and max values of the dependent variables
     for dep in cat_indep_variables:
@@ -1141,24 +1141,7 @@ if GWR_flag == True:
         print("Min: ", Regression_21_24[dep].min())
         print("Max: ", Regression_21_24[dep].max())
         print()
-    # terminate here the execution of the script:
-    sys.exit()
 
-    ''' # if considering total counts instead of shares:        
-                           "Med_HP_2021",             # Median house prices 2021 (December)
-                           #"Med_HP_2023",             # Median house prices 2023 (March)
-                           "ASG_AB_C1",               # Approx social grade (higher and intermediate + Supervisory and junior managerial  occ.)
-                           "ASG_C2_DE",               # Approx social grade (Skilled manual + Semi-skilled, unempl., lowest grade occ.)
-                           "D3+",                     # Deprivation index: n of HH deprived in 2+ dimensions
-                           "Pop_density",             # Population density
-                           "HH_cars_0_1",             # N of HH with 0 or 1 car
-                           "HH_cars_2+",              # N of HH with 2+ cars
-                           "HHT_owned",               # N of HH owning outright + mortgage + shared ownership
-                           "HHT_rented",              # N of HH renting
-                           "Acc_detached_semidet",    # N of HH living in detached and semidetached houses
-                           "Acc_flat",                # N of HH living in flats
-                           "Acc_other"]               # N of HH living in terraced & other houses
-    '''
     if normalise_dependent_variables == True:
         for i in cat_dep_variables:
             Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
@@ -1255,30 +1238,14 @@ if GWR_flag == True:
                                                 # "Med_HP_21",
                                                 "Med_HP_23",
                                                 "Pop_dens",
-                                                "RoadKmDen",
+                                                #"RoadKmDen",
                                                 "POI_dens",
                                                 #"job_th_21",
-                                                "job_th_23",
+                                                #"job_th_23",
                                                 "geometry",
                                                 "x",
                                                 "y",
                                                 "localR2"]]
-
-        ''' # if considering total counts instead of shares:  
-                                            'ASG_AB_C1',
-                                            'ASG_C2_DE',
-                                            'D2+',
-                                            'HH_cars_0_1',
-                                            'HH_cars_2+',
-                                            'HHT_owned',
-                                            'HHT_rented',
-                                            'Acc_detached_semidet',
-                                            'Acc_other',
-                                            'geometry',
-                                            'x',
-                                            'y',
-                                            'localR2']]
-        '''
 
         # rename the columns with names shorter than 10 characters
         '''Regression_21_24_R2.rename(columns={"s-HHcars_2+": "s-HHcars2+",
@@ -1414,6 +1381,28 @@ if check_normality_flag == True:
         else:
             print(f"{var} sample does not look Gaussian (reject H0)")
 
+########################################################################################################################
+# Correlation matrix
+CSCA_2021_2024_flag = True
+
+if CSCA_2021_2024_flag == True:
+    # create a df for the correlation matrix
+    corr_matrix_2021_2024 = Regression_21_24[["acc_21", "acc_24", "acc_diff",
+                                              #"s_impr",
+                                              "s_imp_rate",
+                                              #"d_impr",
+                                              "d_imp_rate",
+                                              "s-ASG_ABC1", "s-ASG_C2DE",
+                                              "s-D3+",
+                                              "s-HHcars01", "s-HHcars2+",
+                                              "s-HHT_own", "s-HHT_rent",
+                                              "s-semi-det", "s-flat", "s-terr-oth",
+                                              "Med_HP_21", "Med_HP_23",
+                                              "Pop_dens",
+                                              #"RoadKmDen",
+                                              "POI_dens"]]
+                                              #"job_th_21", "job_th_23"]]
+    plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 ########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
 calculate_Gini_flag = False
