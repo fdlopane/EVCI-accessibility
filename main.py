@@ -710,14 +710,32 @@ if OLS_2021_2024_flag == True:
     Regression_21_24["Med_HP_21"] = np.log(Regression_21_24["Med_HP_21"])
     Regression_21_24["Med_HP_23"] = np.log(Regression_21_24["Med_HP_23"])
 
+    London_LSOA_centroids = gpd.read_file(inputs["London_LSOA_centroids"])
+    # Now use the polygons geometry for the Regression_21_24 dataframe
+    Regression_21_24 = Regression_21_24.merge(London_LSOA_centroids, on="LSOA21CD", how="outer")
+    # Now turn the Regression_21_24 dataframe into a geodataframe
+    Regression_21_24 = gpd.GeoDataFrame(Regression_21_24)
+
+    # Rename columns
+    Regression_21_24.rename(columns={"LSOA21NM_x": "LSOA21NM"}, inplace=True)
+    # Drop extra columns
+    Regression_21_24.drop(columns=["LSOA21NM_y", "GlobalID"], inplace=True)
+
+    # Remove NaNs
+    Regression_21_24 = Regression_21_24.dropna()
+
+    # Turn the geometry column into a x and y column
+    Regression_21_24["x"] = Regression_21_24.centroid.x
+    Regression_21_24["y"] = Regression_21_24.centroid.y
+
     # categorise the variables in dependent and independent variables and save the categorisation into two lists:
     cat_dep_variables = ["acc_21",                      # Accessibility 2021
                          "acc_24",                      # Accessibility 2024
                          "acc_diff",                        # Accessibility difference 2024 - 2021
-                         #"s_impr",                     # EVCI (supply) improvement
-                         "s_imp_rate",                 # EVCI (supply) improvement rate
-                         #"d_impr",             # EV licensing (demand) improvement
-                         "d_imp_rate"]         # EV licensing (demand) improvement rate
+                         "s_impr",                     # EVCI (supply) improvement
+                         #"s_imp_rate",                 # EVCI (supply) improvement rate
+                         "d_impr"]             # EV licensing (demand) improvement
+                         #"d_imp_rate"]         # EV licensing (demand) improvement rate
                          #"EVCI2021",                             # EVCI 2021
                          #"y2021Q4",                              # EV licensing 2021
                          #"EVCI2024",                             # EVCI 2024
@@ -867,10 +885,62 @@ if OLS_2021_2024_flag == True:
                            #"job_th_21"]         # Thousands of jobs per LSOA in 2021
                            #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
-
-    accessibility_summary_table_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    # Multivariate regression analysis
+    #accessibility_summary_table_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    accessibility_summary_table_21, accessibility_21_residuals, accessibility_21_moran = OLS_analysis_multivariate_moran(Regression_21_24, dependent_variable, independent_variables)
     # save the summary table
     accessibility_summary_table_21.to_csv(outputs["OLS_accessibility_2021"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    accessibility_21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(accessibility_21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    accessibility_21_residuals_df['residuals'] = residuals_series
+    accessibility_21_residuals_df[["residuals"]].to_csv(outputs["OLS_accessibility_2021_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_accessibility21 = pd.DataFrame({
+        'Moran_I': [accessibility_21_moran.I],
+        'Expected_I': [accessibility_21_moran.EI],
+        'Variance': [accessibility_21_moran.VI_norm],
+        'z_score': [accessibility_21_moran.z_norm],
+        'p_value': [accessibility_21_moran.p_norm],
+        'p_sim': [accessibility_21_moran.p_sim],
+        'n_permutations': [accessibility_21_moran.permutations]
+    })
+    moran_results_accessibility21.to_csv(outputs["OLS_accessibility_2021_moran"], index=False)
+
+    # Univariate regression analysis
+    univ_accessibility_summary_table_21, univ_accessibility21_residuals, univ_accessibility21_moran = OLS_analysis_univariate_moran(Regression_21_24, dependent_variable, independent_variables)
+    # save the summary table
+    univ_accessibility_summary_table_21.to_csv(outputs["univ_OLS_accessibility_2021"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    univ_accessibility21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(univ_accessibility21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    univ_accessibility21_residuals_df['residuals'] = residuals_series
+    univ_accessibility21_residuals_df[["residuals"]].to_csv(outputs["univ_OLS_accessibility_2021_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_accessibility21 = pd.DataFrame({
+        'Moran_I': [univ_accessibility21_moran.I],
+        'Expected_I': [univ_accessibility21_moran.EI],
+        'Variance': [univ_accessibility21_moran.VI_norm],
+        'z_score': [univ_accessibility21_moran.z_norm],
+        'p_value': [univ_accessibility21_moran.p_norm],
+        'p_sim': [univ_accessibility21_moran.p_sim],
+        'n_permutations': [univ_accessibility21_moran.permutations]
+    })
+
+    moran_results_accessibility21.to_csv(outputs["univ_OLS_accessibility_2021_moran"], index=False)
+
     '''
     # __________________________________________________________________________________________________________________
     # OLS for SUPPLY 2024
@@ -952,10 +1022,61 @@ if OLS_2021_2024_flag == True:
                               "Acc_flat",             # N of HH living in flats
                               "Acc_other"]]           # N of HH living in terraced & other houses
     '''
-    accessibility_summary_table_24 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    # Multivariate regression analysis
+    #accessibility_summary_table_24 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    accessibility_summary_table_24, accessibility_24_residuals, accessibility_24_moran = OLS_analysis_multivariate_moran(Regression_21_24, dependent_variable, independent_variables)
 
     # save the summary table
     accessibility_summary_table_24.to_csv(outputs["OLS_accessibility_2024"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    accessibility_24_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(accessibility_24_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    accessibility_24_residuals_df['residuals'] = residuals_series
+    accessibility_24_residuals_df[["residuals"]].to_csv(outputs["OLS_accessibility_2024_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_accessibility24 = pd.DataFrame({
+        'Moran_I': [accessibility_24_moran.I],
+        'Expected_I': [accessibility_24_moran.EI],
+        'Variance': [accessibility_24_moran.VI_norm],
+        'z_score': [accessibility_24_moran.z_norm],
+        'p_value': [accessibility_24_moran.p_norm],
+        'p_sim': [accessibility_24_moran.p_sim],
+        'n_permutations': [accessibility_24_moran.permutations]
+    })
+    moran_results_accessibility24.to_csv(outputs["OLS_accessibility_2024_moran"], index=False)
+
+    # Univariate regression analysis
+    univ_accessibility_summary_table_24, univ_accessibility24_residuals, univ_accessibility24_moran = OLS_analysis_univariate_moran(Regression_21_24, dependent_variable, independent_variables)
+    # save the summary table
+    univ_accessibility_summary_table_24.to_csv(outputs["univ_OLS_accessibility_2024"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    univ_accessibility24_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(univ_accessibility24_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    univ_accessibility24_residuals_df['residuals'] = residuals_series
+    univ_accessibility24_residuals_df[["residuals"]].to_csv(outputs["univ_OLS_accessibility_2024_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_accessibility24 = pd.DataFrame({
+        'Moran_I': [univ_accessibility24_moran.I],
+        'Expected_I': [univ_accessibility24_moran.EI],
+        'Variance': [univ_accessibility24_moran.VI_norm],
+        'z_score': [univ_accessibility24_moran.z_norm],
+        'p_value': [univ_accessibility24_moran.p_norm],
+        'p_sim': [univ_accessibility24_moran.p_sim],
+        'n_permutations': [univ_accessibility24_moran.permutations]
+    })
+    moran_results_accessibility24.to_csv(outputs["univ_OLS_accessibility_2024_moran"], index=False)
 
     # __________________________________________________________________________________________________________________
     # OLS for ACCESSIBILITY DIFFERENCE 2024-2021
@@ -978,14 +1099,65 @@ if OLS_2021_2024_flag == True:
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
                            #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
-    acc_diff_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    # Multivariate regression analysis
+    #acc_diff_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    acc_diff_summary_table_24_21, acc_diff_24_21_residuals, acc_diff_24_21_moran = OLS_analysis_multivariate_moran(Regression_21_24, dependent_variable, independent_variables)
 
     # save the summary table
     acc_diff_summary_table_24_21.to_csv(outputs["OLS_diff_accessibility_21_24"], index=False)
 
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    acc_diff_24_21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(acc_diff_24_21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    acc_diff_24_21_residuals_df['residuals'] = residuals_series
+    acc_diff_24_21_residuals_df[["residuals"]].to_csv(outputs["OLS_diff_accessibility_21_24_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_acc_diff24_21 = pd.DataFrame({
+        'Moran_I': [acc_diff_24_21_moran.I],
+        'Expected_I': [acc_diff_24_21_moran.EI],
+        'Variance': [acc_diff_24_21_moran.VI_norm],
+        'z_score': [acc_diff_24_21_moran.z_norm],
+        'p_value': [acc_diff_24_21_moran.p_norm],
+        'p_sim': [acc_diff_24_21_moran.p_sim],
+        'n_permutations': [acc_diff_24_21_moran.permutations]
+    })
+    moran_results_acc_diff24_21.to_csv(outputs["OLS_diff_accessibility_21_24_moran"], index=False)
+
+    # Univariate regression analysis
+    univ_acc_diff_summary_table_24_21, univ_acc_diff24_21_residuals, univ_acc_diff24_21_moran = OLS_analysis_univariate_moran(Regression_21_24, dependent_variable, independent_variables)
+    # save the summary table
+    univ_acc_diff_summary_table_24_21.to_csv(outputs["univ_OLS_diff_accessibility_21_24"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    univ_acc_diff24_21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(univ_acc_diff24_21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    univ_acc_diff24_21_residuals_df['residuals'] = residuals_series
+    univ_acc_diff24_21_residuals_df[["residuals"]].to_csv(outputs["univ_OLS_diff_accessibility_21_24_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_acc_diff24_21 = pd.DataFrame({
+        'Moran_I': [univ_acc_diff24_21_moran.I],
+        'Expected_I': [univ_acc_diff24_21_moran.EI],
+        'Variance': [univ_acc_diff24_21_moran.VI_norm],
+        'z_score': [univ_acc_diff24_21_moran.z_norm],
+        'p_value': [univ_acc_diff24_21_moran.p_norm],
+        'p_sim': [univ_acc_diff24_21_moran.p_sim],
+        'n_permutations': [univ_acc_diff24_21_moran.permutations]
+    })
+    moran_results_acc_diff24_21.to_csv(outputs["univ_OLS_diff_accessibility_21_24_moran"], index=False)
+
     # __________________________________________________________________________________________________________________
-    # OLS for EVCI SUPPLY IMPROVEMENT RATE
-    dependent_variable = "s_imp_rate"
+    # OLS for EVCI SUPPLY IMPROVEMENT
+    dependent_variable = "s_impr"
     independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
                            "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
                            "s-D3+",             # Share of HH deprived in 3+ dimensions
@@ -1003,14 +1175,66 @@ if OLS_2021_2024_flag == True:
                            "POI_dens"]          # POI density
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
                            #"job_th_23"]         # Thousands of jobs per LSOA in 2023
-    supp_impr_rate_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+
+    # Multivariate regression analysis
+    #supp_impr_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    supp_impr_summary_table_24_21, supp_impr_24_21_residuals, supp_impr_24_21_moran = OLS_analysis_multivariate_moran(Regression_21_24, dependent_variable, independent_variables)
 
     # save the summary table
-    supp_impr_rate_summary_table_24_21.to_csv(outputs["OLS_supply_improvement_rate"], index=False)
+    supp_impr_summary_table_24_21.to_csv(outputs["OLS_supply_improvement"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    supp_impr_24_21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(supp_impr_24_21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    supp_impr_24_21_residuals_df['residuals'] = residuals_series
+    supp_impr_24_21_residuals_df[["residuals"]].to_csv(outputs["OLS_supply_improvement_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_supp_impr24_21 = pd.DataFrame({
+        'Moran_I': [supp_impr_24_21_moran.I],
+        'Expected_I': [supp_impr_24_21_moran.EI],
+        'Variance': [supp_impr_24_21_moran.VI_norm],
+        'z_score': [supp_impr_24_21_moran.z_norm],
+        'p_value': [supp_impr_24_21_moran.p_norm],
+        'p_sim': [supp_impr_24_21_moran.p_sim],
+        'n_permutations': [supp_impr_24_21_moran.permutations]
+    })
+    moran_results_supp_impr24_21.to_csv(outputs["OLS_supply_improvement_moran"], index=False)
+
+    # Univariate regression analysis
+    univ_supp_impr_summary_table_24_21, univ_supp_impr_24_21_residuals, univ_supp_impr_24_21_moran = OLS_analysis_univariate_moran(Regression_21_24, dependent_variable, independent_variables)
+    # save the summary table
+    univ_supp_impr_summary_table_24_21.to_csv(outputs["univ_OLS_supply_improvement"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    univ_supp_impr_24_21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(univ_supp_impr_24_21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    univ_supp_impr_24_21_residuals_df['residuals'] = residuals_series
+    univ_supp_impr_24_21_residuals_df[["residuals"]].to_csv(outputs["univ_OLS_supply_improvement_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_supp_impr_24_21 = pd.DataFrame({
+        'Moran_I': [univ_supp_impr_24_21_moran.I],
+        'Expected_I': [univ_supp_impr_24_21_moran.EI],
+        'Variance': [univ_supp_impr_24_21_moran.VI_norm],
+        'z_score': [univ_supp_impr_24_21_moran.z_norm],
+        'p_value': [univ_supp_impr_24_21_moran.p_norm],
+        'p_sim': [univ_supp_impr_24_21_moran.p_sim],
+        'n_permutations': [univ_supp_impr_24_21_moran.permutations]
+    })
+    moran_results_supp_impr_24_21.to_csv(outputs["univ_OLS_supply_improvement_moran"], index=False)
 
     # __________________________________________________________________________________________________________________
-    # OLS for EVCI DEMAND IMPROVEMENT RATE
-    dependent_variable = "d_imp_rate"
+    # OLS for EVCI DEMAND IMPROVEMENT
+    dependent_variable = "d_impr"
     independent_variables = ["s-ASG_ABC1",        # Share of HH in social grade AB and C1
                            "s-ASG_C2DE",       # Share of HH in social grade C2 and DE
                            "s-D3+",             # Share of HH deprived in 3+ dimensions
@@ -1029,17 +1253,68 @@ if OLS_2021_2024_flag == True:
                            #"job_th_21",         # Thousands of jobs per LSOA in 2021
                            #"job_th_23"]         # Thousands of jobs per LSOA in 2023
 
+    # Multivariate regression analysis
 
-    dem_impr_rate_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    #dem_impr_summary_table_24_21 = OLS_analysis(Regression_21_24, dependent_variable, independent_variables)
+    dem_impr_summary_table_24_21, dem_impr_24_21_residuals, dem_impr_24_21_moran = OLS_analysis_multivariate_moran(Regression_21_24, dependent_variable, independent_variables)
 
     # save the summary table
-    dem_impr_rate_summary_table_24_21.to_csv(outputs["OLS_demand_improvement_rate"], index=False)
+    dem_impr_summary_table_24_21.to_csv(outputs["OLS_demand_improvement"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    dem_impr_24_21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(dem_impr_24_21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    dem_impr_24_21_residuals_df['residuals'] = residuals_series
+    dem_impr_24_21_residuals_df[["residuals"]].to_csv(outputs["OLS_demand_improvement_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_dem_impr24_21 = pd.DataFrame({
+        'Moran_I': [dem_impr_24_21_moran.I],
+        'Expected_I': [dem_impr_24_21_moran.EI],
+        'Variance': [dem_impr_24_21_moran.VI_norm],
+        'z_score': [dem_impr_24_21_moran.z_norm],
+        'p_value': [dem_impr_24_21_moran.p_norm],
+        'p_sim': [dem_impr_24_21_moran.p_sim],
+        'n_permutations': [dem_impr_24_21_moran.permutations]
+    })
+    moran_results_dem_impr24_21.to_csv(outputs["OLS_demand_improvement_moran"], index=False)
+
+    # Univariate regression analysis
+    univ_dem_impr_summary_table_24_21, univ_dem_impr24_21_residuals, univ_dem_impr24_21_moran = OLS_analysis_univariate_moran(Regression_21_24, dependent_variable, independent_variables)
+    # save the summary table
+    univ_dem_impr_summary_table_24_21.to_csv(outputs["univ_OLS_demand_improvement"], index=False)
+
+    # save the residuals
+    # Create a copy of the cleaned data used for modeling
+    univ_dem_impr24_21_residuals_df = Regression_21_24.copy().reset_index(drop=True)
+    # Convert residuals to a pandas Series with the same index
+    residuals_series = pd.Series(univ_dem_impr24_21_residuals, name='residuals')
+    # Add residuals column to the DataFrame
+    univ_dem_impr24_21_residuals_df['residuals'] = residuals_series
+    univ_dem_impr24_21_residuals_df[["residuals"]].to_csv(outputs["univ_OLS_demand_improvement_residuals"], index=False)
+
+    # save the moran's I results
+    # Create a DataFrame with Moran's I results
+    moran_results_dem_impr24_21 = pd.DataFrame({
+        'Moran_I': [univ_dem_impr24_21_moran.I],
+        'Expected_I': [univ_dem_impr24_21_moran.EI],
+        'Variance': [univ_dem_impr24_21_moran.VI_norm],
+        'z_score': [univ_dem_impr24_21_moran.z_norm],
+        'p_value': [univ_dem_impr24_21_moran.p_norm],
+        'p_sim': [univ_dem_impr24_21_moran.p_sim],
+        'n_permutations': [univ_dem_impr24_21_moran.permutations]
+    })
+    moran_results_dem_impr24_21.to_csv(outputs["univ_OLS_demand_improvement_moran"], index=False)
 
 ########################################################################################################################
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GWR_flag = True
+GWR_flag = False
 # Normalisation options:
 normalise_dependent_variables = False
 normalise_independent_variables = False
@@ -1388,10 +1663,10 @@ CSCA_2021_2024_flag = True
 if CSCA_2021_2024_flag == True:
     # create a df for the correlation matrix
     corr_matrix_2021_2024 = Regression_21_24[["acc_21", "acc_24", "acc_diff",
-                                              #"s_impr",
-                                              "s_imp_rate",
-                                              #"d_impr",
-                                              "d_imp_rate",
+                                              "s_impr",
+                                              #"s_imp_rate",
+                                              "d_impr",
+                                              #"d_imp_rate",
                                               "s-ASG_ABC1", "s-ASG_C2DE",
                                               "s-D3+",
                                               "s-HHcars01", "s-HHcars2+",

@@ -13,6 +13,7 @@ import osmnx as ox
 from shapely.validation import make_valid
 from shapely.geometry import Polygon, Point
 import overpy
+from libpysal.weights import KNN
 
 ########################################################################################################################
 # correlation between 2 fields
@@ -211,33 +212,233 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
     cols = cols[:6] + cols[-1:] + cols[6:-1]
     summary_table = summary_table[cols]
 
-
-    '''
-    for i, model in enumerate(models):
-        for j in independent_variables:
-            # TODO: use concat to add the rows to the summary table
-            summary_table = summary_table.append(
-                {'Model': i + 1, 'Variable': j, 'Coefficient': model.params[j], 'Standard Error': model.bse[j],
-                 't-Value': model.tvalues[j], 'p-Value': model.pvalues[j], 'CI 2.5%': model.conf_int()[0][j],
-                 'CI 97.5%': model.conf_int()[1][j]}, ignore_index=True)
-    '''
-
-    '''
-        summary_table.loc[i] = [i+1, independent_variables[i], model.params[1], model.bse[1], model.tvalues[1],
-                                model.pvalues[1], '', model.conf_int()[0][1], model.conf_int()[1][1]]
-    '''
-
-
-
-    # Fill the significance column
-    #summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
-    #summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
-    #summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
-
-    #print(summary_table)
-    #print("###########################################################################################################")
-    #print()
     return summary_table
+
+########################################################################################################################
+def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent_variables, x_col='x', y_col='y', k=8):
+    # Remove NaNs
+    analysis_2021 = analysis_df.dropna()
+
+    print()
+    print("###########################################################################################################")
+    print("OLS analysis for: ", dependent_variable)
+
+    # Define the list of variables:
+    models = []
+    residuals_list = []
+
+    for i in independent_variables:
+        # print("Independent variable: ", i)
+        X = analysis_2021[i]
+        Y = analysis_2021[dependent_variable]
+        X = sm.add_constant(X)
+
+        # Fit the model
+        model = sm.OLS(Y, X.astype(float)).fit()
+        models.append(model)
+
+        # Store residuals for Moran's I calculation
+        residuals_list.append(model.resid)
+
+    # Create a summary table for each model in models
+    summary_table = pd.DataFrame(columns=['Model', 'Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value',
+                                          'CI 2.5%', 'CI 97.5%'])
+
+    # Collect all rows in a list
+    rows_to_add = []
+
+    # Iterate through models and their independent variables
+    for i, model in enumerate(models):
+        for var in model.params.index:  # Get variable names
+            if var == 'const':  # Skip the constant term if present
+                continue
+
+            # Skip variables not found in pvalues or conf_int
+            if var not in model.pvalues or var not in model.conf_int().index:
+                print(f"Warning: Variable '{var}' not found in model.pvalues or model.conf_int()")
+                continue
+
+            # Extract confidence intervals
+            ci_lower, ci_upper = model.conf_int().loc[var]
+
+            # Create a row dictionary
+            row = {
+                'Model': i + 1,
+                'Variable': var,
+                'Coefficient': model.params[var],
+                'Standard Error': model.bse[var],
+                't-Value': model.tvalues[var],
+                'p-Value': model.pvalues[var],
+                'CI 2.5%': ci_lower,
+                'CI 97.5%': ci_upper
+            }
+            rows_to_add.append(row)
+
+    # Convert the list of rows into a DataFrame and concatenate with the summary table
+    summary_table = pd.concat([summary_table, pd.DataFrame(rows_to_add)], ignore_index=True)
+
+    # Sort the summary table by Model and Variable
+    summary_table.sort_values(by=['Model', 'Variable'], inplace=True)
+
+    # Add a column for significance
+    summary_table['Significance'] = ''
+    summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
+    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
+    summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
+
+    # Move the significance column straight after the p-Value column
+    cols = summary_table.columns.tolist()
+    cols = cols[:6] + cols[-1:] + cols[6:-1]
+    summary_table = summary_table[cols]
+
+    '''
+    # Calculate Moran's I for residuals
+    residuals = np.concatenate(residuals_list)  # Combine residuals from all models
+    w = KNN.from_dataframe(analysis_2021, k=5)  # Create a spatial weight matrix (adjust k as needed)
+    moran = Moran(residuals, w)  # Calculate Moran's I
+    '''
+
+    # Residuals
+    residuals = model.resid.values
+
+    # Spatial weights matrix using k-nearest neighbors (or can be based on threshold distance)
+    coords = list(zip(analysis_2021[x_col], analysis_2021[y_col]))
+    w = KNN.from_array(coords, k=k)
+
+    # Moran's I
+    moran = Moran(residuals, w)
+
+    print(f"\nMoran’s I: {moran.I:.4f}")
+    print(f"p-value: {moran.p_sim:.4f} (based on {moran.permutations} permutations)")
+
+    return summary_table, residuals, moran
+
+########################################################################################################################
+def OLS_analysis_univariate(analysis_df, dependent_variable, independent_variables):
+    # Remove NaNs
+    analysis_2021 = analysis_df.dropna()
+
+    print()
+    print("###########################################################################################################")
+    print("OLS analysis for:", dependent_variable)
+
+    # Prepare the data for multivariate OLS
+    X = analysis_2021[independent_variables]
+    Y = analysis_2021[dependent_variable]
+    X = sm.add_constant(X)  # Add intercept
+    model = sm.OLS(Y, X.astype(float)).fit()
+
+    # Create a summary table
+    summary_table = pd.DataFrame(columns=['Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value',
+                                          'CI 2.5%', 'CI 97.5%'])
+
+    rows_to_add = []
+
+    for var in model.params.index:
+        if var not in model.pvalues or var not in model.conf_int().index:
+            print(f"Warning: Variable '{var}' not found in model.pvalues or model.conf_int()")
+            continue
+
+        ci_lower, ci_upper = model.conf_int().loc[var]
+
+        row = {
+            'Variable': var,
+            'Coefficient': model.params[var],
+            'Standard Error': model.bse[var],
+            't-Value': model.tvalues[var],
+            'p-Value': model.pvalues[var],
+            'CI 2.5%': ci_lower,
+            'CI 97.5%': ci_upper
+        }
+        rows_to_add.append(row)
+
+    summary_table = pd.concat([summary_table, pd.DataFrame(rows_to_add)], ignore_index=True)
+
+    # Add significance column
+    summary_table['Significance'] = ''
+    summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
+    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
+    summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
+
+    # Reorder columns
+    cols = summary_table.columns.tolist()
+    cols = cols[:5] + ['Significance'] + cols[5:-1]
+    summary_table = summary_table[cols]
+
+    return summary_table
+
+########################################################################################################################
+import pandas as pd
+import statsmodels.api as sm
+from esda.moran import Moran
+from libpysal.weights import DistanceBand
+import numpy as np
+
+def OLS_analysis_univariate_moran(analysis_df, dependent_variable, independent_variables, x_col='x', y_col='y', k=8):
+    # Remove NaNs
+    analysis_2021 = analysis_df.dropna(subset=independent_variables + [dependent_variable, x_col, y_col])
+
+    print()
+    print("###########################################################################################################")
+    print("OLS analysis for:", dependent_variable)
+
+    # Prepare the data for multivariate OLS
+    X = analysis_2021[independent_variables]
+    Y = analysis_2021[dependent_variable]
+    X = sm.add_constant(X)
+    model = sm.OLS(Y, X.astype(float)).fit()
+
+    # Create a summary table
+    summary_table = pd.DataFrame(columns=['Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value',
+                                          'CI 2.5%', 'CI 97.5%'])
+
+    rows_to_add = []
+
+    for var in model.params.index:
+        if var not in model.pvalues or var not in model.conf_int().index:
+            print(f"Warning: Variable '{var}' not found in model.pvalues or model.conf_int()")
+            continue
+
+        ci_lower, ci_upper = model.conf_int().loc[var]
+
+        row = {
+            'Variable': var,
+            'Coefficient': model.params[var],
+            'Standard Error': model.bse[var],
+            't-Value': model.tvalues[var],
+            'p-Value': model.pvalues[var],
+            'CI 2.5%': ci_lower,
+            'CI 97.5%': ci_upper
+        }
+        rows_to_add.append(row)
+
+    summary_table = pd.concat([summary_table, pd.DataFrame(rows_to_add)], ignore_index=True)
+
+    # Add significance column
+    summary_table['Significance'] = ''
+    summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
+    summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
+    summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
+
+    # Reorder columns
+    cols = summary_table.columns.tolist()
+    cols = cols[:5] + ['Significance'] + cols[5:-1]
+    summary_table = summary_table[cols]
+
+    # Residuals
+    residuals = model.resid.values
+
+    # Spatial weights matrix using k-nearest neighbors (or can be based on threshold distance)
+    coords = list(zip(analysis_2021[x_col], analysis_2021[y_col]))
+    w = KNN.from_array(coords, k=k)
+
+    # Moran's I
+    moran = Moran(residuals, w)
+
+    print(f"\nMoran’s I: {moran.I:.4f}")
+    print(f"p-value: {moran.p_sim:.4f} (based on {moran.permutations} permutations)")
+
+    return summary_table, residuals, moran
 
 ########################################################################################################################
 # Road network density calculation
