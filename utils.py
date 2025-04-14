@@ -15,6 +15,14 @@ from shapely.geometry import Polygon, Point
 import overpy
 from libpysal.weights import KNN
 
+from esda.moran import Moran
+
+from libpysal.weights import Queen
+from spreg import OLS
+from spreg import ML_Lag
+
+
+
 ########################################################################################################################
 # correlation between 2 fields
 
@@ -215,7 +223,7 @@ def OLS_analysis(analysis_df, dependent_variable, independent_variables):
     return summary_table
 
 ########################################################################################################################
-def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent_variables, x_col='x', y_col='y', k=8):
+def OLS_analysis_univariate_moran(analysis_df, dependent_variable, independent_variables, x_col='x', y_col='y', k=8):
     # Remove NaNs
     analysis_2021 = analysis_df.dropna()
 
@@ -228,7 +236,7 @@ def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent
     residuals_list = []
 
     for i in independent_variables:
-        # print("Independent variable: ", i)
+        # Get data for the univariate model
         X = analysis_2021[i]
         Y = analysis_2021[dependent_variable]
         X = sm.add_constant(X)
@@ -242,7 +250,7 @@ def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent
 
     # Create a summary table for each model in models
     summary_table = pd.DataFrame(columns=['Model', 'Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value',
-                                          'CI 2.5%', 'CI 97.5%'])
+                                          'CI 2.5%', 'CI 97.5%', 'R2'])
 
     # Collect all rows in a list
     rows_to_add = []
@@ -261,7 +269,7 @@ def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent
             # Extract confidence intervals
             ci_lower, ci_upper = model.conf_int().loc[var]
 
-            # Create a row dictionary
+            # Create a row dictionary with R2 added (model.rsquared)
             row = {
                 'Model': i + 1,
                 'Variable': var,
@@ -270,7 +278,8 @@ def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent
                 't-Value': model.tvalues[var],
                 'p-Value': model.pvalues[var],
                 'CI 2.5%': ci_lower,
-                'CI 97.5%': ci_upper
+                'CI 97.5%': ci_upper,
+                'R2': model.rsquared
             }
             rows_to_add.append(row)
 
@@ -280,32 +289,26 @@ def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent
     # Sort the summary table by Model and Variable
     summary_table.sort_values(by=['Model', 'Variable'], inplace=True)
 
-    # Add a column for significance
+    # Add a column for significance based on p-value thresholds
     summary_table['Significance'] = ''
     summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
     summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
     summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
 
-    # Move the significance column straight after the p-Value column
-    cols = summary_table.columns.tolist()
-    cols = cols[:6] + cols[-1:] + cols[6:-1]
-    summary_table = summary_table[cols]
+    # Reorder columns so that 'Significance' comes straight after 'p-Value'
+    ordered_cols = ['Model', 'Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value', 'Significance', 'R2', 'CI 2.5%', 'CI 97.5%']
+    summary_table = summary_table[ordered_cols]
 
-    '''
-    # Calculate Moran's I for residuals
-    residuals = np.concatenate(residuals_list)  # Combine residuals from all models
-    w = KNN.from_dataframe(analysis_2021, k=5)  # Create a spatial weight matrix (adjust k as needed)
-    moran = Moran(residuals, w)  # Calculate Moran's I
-    '''
-
-    # Residuals
+    # Use residuals from the last model (or combine appropriately if needed)
     residuals = model.resid.values
 
-    # Spatial weights matrix using k-nearest neighbors (or can be based on threshold distance)
+    # Spatial weights matrix using k-nearest neighbors (or based on a threshold distance)
+    from libpysal.weights import KNN
     coords = list(zip(analysis_2021[x_col], analysis_2021[y_col]))
     w = KNN.from_array(coords, k=k)
 
-    # Moran's I
+    # Calculate Moran's I
+    from esda.moran import Moran
     moran = Moran(residuals, w)
 
     print(f"\nMoran’s I: {moran.I:.4f}")
@@ -368,14 +371,9 @@ def OLS_analysis_univariate(analysis_df, dependent_variable, independent_variabl
     return summary_table
 
 ########################################################################################################################
-import pandas as pd
-import statsmodels.api as sm
-from esda.moran import Moran
-from libpysal.weights import DistanceBand
-import numpy as np
 
-def OLS_analysis_univariate_moran(analysis_df, dependent_variable, independent_variables, x_col='x', y_col='y', k=8):
-    # Remove NaNs
+def OLS_analysis_multivariate_moran(analysis_df, dependent_variable, independent_variables, x_col='x', y_col='y', k=8):
+    # Remove NaNs using the required columns
     analysis_2021 = analysis_df.dropna(subset=independent_variables + [dependent_variable, x_col, y_col])
 
     print()
@@ -388,12 +386,13 @@ def OLS_analysis_univariate_moran(analysis_df, dependent_variable, independent_v
     X = sm.add_constant(X)
     model = sm.OLS(Y, X.astype(float)).fit()
 
-    # Create a summary table
+    # Create a summary table with an added R2 column
     summary_table = pd.DataFrame(columns=['Variable', 'Coefficient', 'Standard Error', 't-Value', 'p-Value',
-                                          'CI 2.5%', 'CI 97.5%'])
+                                            'CI 2.5%', 'CI 97.5%', 'R2'])
 
     rows_to_add = []
 
+    # Iterate through each parameter in the model
     for var in model.params.index:
         if var not in model.pvalues or var not in model.conf_int().index:
             print(f"Warning: Variable '{var}' not found in model.pvalues or model.conf_int()")
@@ -408,31 +407,35 @@ def OLS_analysis_univariate_moran(analysis_df, dependent_variable, independent_v
             't-Value': model.tvalues[var],
             'p-Value': model.pvalues[var],
             'CI 2.5%': ci_lower,
-            'CI 97.5%': ci_upper
+            'CI 97.5%': ci_upper,
+            'R2': model.rsquared
         }
         rows_to_add.append(row)
 
     summary_table = pd.concat([summary_table, pd.DataFrame(rows_to_add)], ignore_index=True)
 
-    # Add significance column
+    # Add significance column based on p-values
     summary_table['Significance'] = ''
     summary_table.loc[summary_table['p-Value'] <= 0.01, 'Significance'] = '***'
     summary_table.loc[(summary_table['p-Value'] > 0.01) & (summary_table['p-Value'] <= 0.05), 'Significance'] = '**'
     summary_table.loc[(summary_table['p-Value'] > 0.05) & (summary_table['p-Value'] <= 0.1), 'Significance'] = '*'
 
-    # Reorder columns
+    # Reorder columns so that the Significance column comes right after the p-Value column
     cols = summary_table.columns.tolist()
-    cols = cols[:5] + ['Significance'] + cols[5:-1]
+    # This reordering: keep first 5 columns, then 'Significance', then remaining columns.
+    cols = cols[:5] + ['Significance'] + cols[5:-1] + [cols[-1]]
     summary_table = summary_table[cols]
 
-    # Residuals
+    # Residuals from the fitted model
     residuals = model.resid.values
 
-    # Spatial weights matrix using k-nearest neighbors (or can be based on threshold distance)
+    # Create spatial weights matrix using k-nearest neighbors; you can adjust k as needed
+    from libpysal.weights import KNN
     coords = list(zip(analysis_2021[x_col], analysis_2021[y_col]))
     w = KNN.from_array(coords, k=k)
 
-    # Moran's I
+    # Calculate Moran's I for the residuals
+    from esda.moran import Moran
     moran = Moran(residuals, w)
 
     print(f"\nMoran’s I: {moran.I:.4f}")
@@ -554,3 +557,134 @@ def amenities_scarping(bfcs):
     # amenities.drop(['latitude','longitude'],axis=1).to_file(data_path + 'amenities.geojson',driver='GeoJSON')
 
     return amenities
+
+########################################################################################################################
+# Spatial lag model (SLM)
+def run_slm(df, dep_var, indep_vars, w=None):
+    """
+    Runs a Spatial Lag Model (SLM) using ML_Lag and returns a tidy DataFrame
+    with coefficients, p-values, significance stars, and model diagnostics,
+    including the R2 (pseudo R-squared) value.
+
+    Each row represents an estimated parameter (intercept or coefficient). The
+    significance column is inserted immediately after the p_value column.
+    """
+    # Create spatial weights if not provided
+    if w is None:
+        w = Queen.from_dataframe(df, use_index=False)
+    w.transform = 'r'
+
+    # Prepare data
+    y = df[[dep_var]].values
+    X = df[indep_vars].values
+
+    # Fit model using ML_Lag
+    model = ML_Lag(y, X, w=w, name_y=dep_var, name_x=indep_vars)
+
+    # Define coefficient names: constant + independent variable names
+    coef_names = ['constant'] + indep_vars
+    # z_stat returns a list of tuples: (z_value, p_value) for each coefficient,
+    # and the last entry is for rho.
+    z_stats = model.z_stat
+
+    # Prepare rows for the output DataFrame (using model.pr2 for R2)
+    rows = []
+    for name, (coef, (z, p)) in zip(coef_names, zip(model.betas.flatten(), z_stats[:-1])):
+        # Assign significance based on conventional thresholds
+        if p <= 0.01:
+            sig = '***'
+        elif p <= 0.05:
+            sig = '**'
+        elif p <= 0.1:
+            sig = '*'
+        else:
+            sig = ''
+
+        rows.append({
+            'dependent_var': dep_var,
+            'variable': name,
+            'coefficient': coef,
+            'p_value': p,
+            'R2': model.pr2,  # Model's pseudo R-squared added here
+            'significance': sig,
+            'rho': model.rho,  # model.rho is a scalar
+            'rho_p_value': z_stats[-1][1],  # Last z_stat corresponds to rho
+            'log_likelihood': model.logll,
+            'AIC': model.aic,
+            'BIC': model.schwarz,
+        })
+
+    # Create DataFrame and order columns so that significance is after p_value and R2 appears next
+    df_results = pd.DataFrame(rows)
+    ordered_cols = ['dependent_var', 'variable', 'coefficient', 'p_value', 'R2', 'significance',
+                    'rho', 'rho_p_value', 'log_likelihood', 'AIC', 'BIC']
+    df_results = df_results[ordered_cols]
+    return df_results
+
+########################################################################################################################
+# calculate the LM-lag, LM-error, Robust LM-lag, and Robust LM-error tests
+
+def lm_tests_multiple_models(df, dep_vars, indep_vars_list):
+    """
+    Perform spatial LM diagnostics (LM-lag, LM-error, Robust LM-lag/error)
+    for multiple models, each with its own set of independent variables.
+
+    Parameters:
+    - df: pandas DataFrame with all relevant variables
+    - dep_vars: list of dependent variable names (one per model)
+    - indep_vars_list: list of lists of independent variable names, matching dep_vars
+
+    Returns:
+    - pandas DataFrame summarizing diagnostics
+    """
+    if len(dep_vars) != len(indep_vars_list):
+        raise ValueError("Length of dep_vars and indep_vars_list must match.")
+
+    # Create spatial weights
+    w = Queen.from_dataframe(df)
+    w.transform = 'r'
+
+    results = []
+
+    for y_var, x_vars in zip(dep_vars, indep_vars_list):
+        try:
+            y = df[[y_var]].values
+            X = df[x_vars].values
+
+            model = OLS(y, X, w=w, name_y=y_var, name_x=x_vars, nonspat_diag=True, spat_diag=True)
+
+            # Diagnostics
+            lm_lag, lm_lag_p = getattr(model, 'lm_lag', (np.nan, np.nan))
+            lm_error, lm_error_p = getattr(model, 'lm_error', (np.nan, np.nan))
+            rlm_lag, rlm_lag_p = getattr(model, 'rlm_lag', (np.nan, np.nan))
+            rlm_error, rlm_error_p = getattr(model, 'rlm_error', (np.nan, np.nan))
+
+            results.append({
+                "Dependent Variable": y_var,
+                "Independent Variables": ", ".join(x_vars),
+                "LM Lag": lm_lag,
+                "LM Lag p-value": lm_lag_p,
+                "LM Error": lm_error,
+                "LM Error p-value": lm_error_p,
+                "Robust LM Lag": rlm_lag,
+                "Robust LM Lag p-value": rlm_lag_p,
+                "Robust LM Error": rlm_error,
+                "Robust LM Error p-value": rlm_error_p,
+            })
+
+        except Exception as e:
+            print(f"[ERROR] Model for {y_var} failed: {e}")
+            results.append({
+                "Dependent Variable": y_var,
+                "Independent Variables": ", ".join(x_vars),
+                "LM Lag": np.nan,
+                "LM Lag p-value": np.nan,
+                "LM Error": np.nan,
+                "LM Error p-value": np.nan,
+                "Robust LM Lag": np.nan,
+                "Robust LM Lag p-value": np.nan,
+                "Robust LM Error": np.nan,
+                "Robust LM Error p-value": np.nan,
+            })
+
+    return pd.DataFrame(results)

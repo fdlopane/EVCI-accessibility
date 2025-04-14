@@ -38,48 +38,57 @@ outputs["OLS_accessibility_2021"] = "./output-data/OLS_accessibility_2021.csv"
 outputs["OLS_accessibility_2021_residuals"] = "./output-data/OLS_accessibility_2021_residuals.csv"
 outputs["OLS_accessibility_2021_moran"] = "./output-data/OLS_accessibility_2021_moran.csv"
 
-outputs["univ_OLS_accessibility_2021"] = "./output-data/univ_OLS_accessibility_2021.csv"
-outputs["univ_OLS_accessibility_2021_residuals"] = "./output-data/univ_OLS_accessibility_2021_residuals.csv"
-outputs["univ_OLS_accessibility_2021_moran"] = "./output-data/univ_OLS_accessibility_2021_moran.csv"
+outputs["multiv_OLS_accessibility_2021"] = "./output-data/multiv_OLS_accessibility_2021.csv"
+outputs["multiv_OLS_accessibility_2021_residuals"] = "./output-data/multiv_OLS_accessibility_2021_residuals.csv"
+outputs["multiv_OLS_accessibility_2021_moran"] = "./output-data/multiv_OLS_accessibility_2021_moran.csv"
 
 # Accessibility 2024
 outputs["OLS_accessibility_2024"] = "./output-data/OLS_accessibility_2024.csv"
 outputs["OLS_accessibility_2024_residuals"] = "./output-data/OLS_accessibility_2024_residuals.csv"
 outputs["OLS_accessibility_2024_moran"] = "./output-data/OLS_accessibility_2024_moran.csv"
 
-outputs["univ_OLS_accessibility_2024"] = "./output-data/univ_OLS_accessibility_2024.csv"
-outputs["univ_OLS_accessibility_2024_residuals"] = "./output-data/univ_OLS_accessibility_2024_residuals.csv"
-outputs["univ_OLS_accessibility_2024_moran"] = "./output-data/univ_OLS_accessibility_2024_moran.csv"
+outputs["multiv_OLS_accessibility_2024"] = "./output-data/multiv_OLS_accessibility_2024.csv"
+outputs["multiv_OLS_accessibility_2024_residuals"] = "./output-data/multiv_OLS_accessibility_2024_residuals.csv"
+outputs["multiv_OLS_accessibility_2024_moran"] = "./output-data/multiv_OLS_accessibility_2024_moran.csv"
 
 # Accessibility difference 2021-2024
 outputs["OLS_diff_accessibility_21_24"] = "./output-data/OLS_diff_accessibility_21_24.csv"
 outputs["OLS_diff_accessibility_21_24_residuals"] = "./output-data/OLS_diff_accessibility_21_24_residuals.csv"
 outputs["OLS_diff_accessibility_21_24_moran"] = "./output-data/OLS_diff_accessibility_21_24_moran.csv"
 
-outputs["univ_OLS_diff_accessibility_21_24"] = "./output-data/univ_OLS_diff_accessibility_21_24.csv"
-outputs["univ_OLS_diff_accessibility_21_24_residuals"] = "./output-data/univ_OLS_diff_accessibility_21_24_residuals.csv"
-outputs["univ_OLS_diff_accessibility_21_24_moran"] = "./output-data/univ_OLS_diff_accessibility_21_24_moran.csv"
+outputs["multiv_OLS_diff_accessibility_21_24"] = "./output-data/multiv_OLS_diff_accessibility_21_24.csv"
+outputs["multiv_OLS_diff_accessibility_21_24_residuals"] = "./output-data/multiv_OLS_diff_accessibility_21_24_residuals.csv"
+outputs["multiv_OLS_diff_accessibility_21_24_moran"] = "./output-data/multiv_OLS_diff_accessibility_21_24_moran.csv"
 
 # Supply improvement
 outputs["OLS_supply_improvement"] = "./output-data/OLS_supply_improvement.csv"
 outputs["OLS_supply_improvement_residuals"] = "./output-data/OLS_supply_improvement_residuals.csv"
 outputs["OLS_supply_improvement_moran"] = "./output-data/OLS_supply_improvement_moran.csv"
 
-outputs["univ_OLS_supply_improvement"] = "./output-data/univ_OLS_supply_improvement.csv"
-outputs["univ_OLS_supply_improvement_residuals"] = "./output-data/univ_OLS_supply_improvement_residuals.csv"
-outputs["univ_OLS_supply_improvement_moran"] = "./output-data/univ_OLS_supply_improvement_moran.csv"
+outputs["multiv_OLS_supply_improvement"] = "./output-data/multiv_OLS_supply_improvement.csv"
+outputs["multiv_OLS_supply_improvement_residuals"] = "./output-data/multiv_OLS_supply_improvement_residuals.csv"
+outputs["multiv_OLS_supply_improvement_moran"] = "./output-data/multiv_OLS_supply_improvement_moran.csv"
 
 # Demand improvement
 outputs["OLS_demand_improvement"] = "./output-data/OLS_demand_improvement.csv"
 outputs["OLS_demand_improvement_residuals"] = "./output-data/OLS_demand_improvement_residuals.csv"
 outputs["OLS_demand_improvement_moran"] = "./output-data/OLS_demand_improvement_moran.csv"
 
-outputs["univ_OLS_demand_improvement"] = "./output-data/univ_OLS_demand_improvement.csv"
-outputs["univ_OLS_demand_improvement_residuals"] = "./output-data/univ_OLS_demand_improvement_residuals.csv"
-outputs["univ_OLS_demand_improvement_moran"] = "./output-data/univ_OLS_demand_improvement_moran.csv"
+outputs["multiv_OLS_demand_improvement"] = "./output-data/multiv_OLS_demand_improvement.csv"
+outputs["multiv_OLS_demand_improvement_residuals"] = "./output-data/multiv_OLS_demand_improvement_residuals.csv"
+outputs["multiv_OLS_demand_improvement_moran"] = "./output-data/multiv_OLS_demand_improvement_moran.csv"
 
 # Improvement rates
 outputs["OLS_supply_improvement_rate"] = "./output-data/OLS_supply_improvement_rate.csv"
 outputs["OLS_demand_improvement_rate"] = "./output-data/OLS_demand_improvement_rate.csv"
+
+outputs["LM_lag_error_test"] = "./output-data/LM_lag_error_test.csv"
+
+# SLM results
+outputs["SLM_acc_21"] = "./output-data/SLM_acc_21.csv"
+outputs["SLM_acc_24"] = "./output-data/SLM_acc_24.csv"
+outputs["SLM_diff_acc_21_24"] = "./output-data/SLM_diff_acc_21_24.csv"
+outputs["SLM_supply_impr"] = "./output-data/SLM_supply.csv"
+outputs["SLM_demand_impr"] = "./output-data/SLM_demand.csv"
 
 
