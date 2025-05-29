@@ -1404,7 +1404,7 @@ if SLM_flag == True:
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GWR_flag = True
+GWR_flag = False
 # Normalisation options:
 normalise_dependent_variables = False
 normalise_independent_variables = False
@@ -1770,12 +1770,12 @@ if CSCA_2021_2024_flag == True:
     plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
 ########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
-calculate_Gini_flag = False
+calculate_Gini_flag = True
 
 if calculate_Gini_flag == True:
     # Load the accessibility data, make them numpy arrays
-    accessibility_21 = np.array(Regression_21_24["accessibility_21"])
-    accessibility_24 = np.array(Regression_21_24["accessibility_24"])
+    accessibility_21 = np.array(Regression_21_24["acc_21"])
+    accessibility_24 = np.array(Regression_21_24["acc_24"])
 
     # Remove NaNs
     accessibility_21 = accessibility_21[~np.isnan(accessibility_21)]
