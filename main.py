@@ -1361,7 +1361,7 @@ if LM_lag_error_test_flag == True:
 # Spatial lag model (SLM)
 # SLM: if I suspect spatial dependence in the outcome — e.g., accessibility in one borough depends on accessibility in neighboring boroughs.
 
-SLM_flag = True
+SLM_flag = False
 
 if SLM_flag == True:
     print(
@@ -1404,7 +1404,7 @@ if SLM_flag == True:
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GWR_flag = False
+GWR_flag = True
 # Normalisation options:
 normalise_dependent_variables = False
 normalise_independent_variables = False
@@ -1748,7 +1748,7 @@ if check_normality_flag == True:
 
 ########################################################################################################################
 # Correlation matrix
-CSCA_2021_2024_flag = True
+CSCA_2021_2024_flag = False
 
 if CSCA_2021_2024_flag == True:
     # create a df for the correlation matrix
@@ -1847,4 +1847,19 @@ if calculate_Gini_flag == True:
     print(f"Gini Index for 2024: {gini_2024}")
 
 ########################################################################################################################
+# Calculate summary statistics for the variables used in the regression from the Regression_21_24 data frame
+calculate_summary_statistics_flag = True
 
+if calculate_summary_statistics_flag == True:
+    # Create a DataFrame with the variables of interest
+    df_sm = Regression_21_24[[ 'acc_21', 'acc_24', 'acc_diff', 's_impr',
+       's_imp_rate', 'd_impr', 'd_imp_rate', 's-ASG_ABC1', 's-ASG_C2DE',
+       's-D3+', 's-HHcars01', 's-HHcars2+', 's-HHT_own', 's-HHT_rent',
+       's-semi-det', 's-flat', 's-terr-oth', 'Med_HP_21', 'Med_HP_23',
+       'Pop_dens', 'POI_dens']]
+
+    # Calculate summary statistics
+    summary_stats_df = df_sm.describe()
+
+    # Save the summary statistics to a CSV file
+    summary_stats_df.to_csv(outputs["summary_statistics"], index=False)

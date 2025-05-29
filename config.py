@@ -91,4 +91,7 @@ outputs["SLM_diff_acc_21_24"] = "./output-data/SLM_diff_acc_21_24.csv"
 outputs["SLM_supply_impr"] = "./output-data/SLM_supply.csv"
 outputs["SLM_demand_impr"] = "./output-data/SLM_demand.csv"
 
+# Variables summary statistics
+outputs["summary_statistics"] = "./output-data/variables_summary_statistics.csv"
+
 
