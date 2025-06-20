@@ -1,6 +1,7 @@
 '''
 Collection of functions used in the EVCI accessibility analysis
 '''
+from config import *
 
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
@@ -20,6 +21,9 @@ from esda.moran import Moran
 from libpysal.weights import Queen
 from spreg import OLS
 from spreg import ML_Lag
+
+from matplotlib.collections import PatchCollection
+from matplotlib.colors import LinearSegmentedColormap
 
 
 
@@ -121,7 +125,64 @@ def plt_and_save_corr_matrix(analysis_df, output_file_name):
 
     # Plot the correlation matrix with a 'coolwarm' color map
     corr_matrix = analysis_df.corr(method='pearson')
+
+    N = len(corr_matrix.columns)  # Number of columns
+    M = len(corr_matrix.index)  # Number of rows
+
+    ylabels = corr_matrix.columns.tolist()
+    xlabels = corr_matrix.index.tolist()
+
+    # Create mesh grid
+    x, y = np.meshgrid(np.arange(M), np.arange(N))
+
+    # Get the correlation values as a NumPy array
+    corr_values = corr_matrix.values
+
+    # Use absolute correlation values for size and original values for color
+    # Avoid zero radius: add small epsilon if needed
+    abs_corr = np.abs(corr_values)
+    R = abs_corr / abs_corr.max() / 2  # Normalize radii
+
+    # Create circle patches
+    #circles = [plt.Circle((j, i), radius=(r * abs(1.5 - r))) for r, j, i in zip(R.flat, x.flat, y.flat)]
+    circles = [plt.Circle((j, i), radius=(0.5*(0.3+3.14*r*r))) for r, j, i in zip(R.flat, x.flat, y.flat)]
+
+    # Define custom colormap
+    BluGrn = LinearSegmentedColormap.from_list("BluGrn",
+                                               ["#C4E6C3FF", "#96D2A4FF", "#6DBC90FF", "#4DA284FF", "#36877AFF",
+                                                "#266B6EFF", "#1D4F60FF"])
+    Earth = LinearSegmentedColormap.from_list("Earth", ["#A16928FF", "#BD925AFF", "#D6BD8DFF", "#EDEAC2FF", "#B5C8B8FF",
+                                                        "#79A7ACFF", "#2887A1FF"])
+    BluRd = LinearSegmentedColormap.from_list("BluRd", ["#ca0020", "#f4a582", "#f7f7f7", "#92c5de", "#0571b0"])
+    BluYlRd = LinearSegmentedColormap.from_list("BluYlRd", ["#d7191c", "#fdae61", "#ffffbf", "#abd9e9", "#2c7bb6"])
+    Fall = LinearSegmentedColormap.from_list("Fall", ["#3D5941FF", "#778868FF", "#B5B991FF", "#F6EDBDFF", "#EDBB8AFF", "#DE8A5AFF", "#CA562CFF"])
+    InvFall = LinearSegmentedColormap.from_list("InvFall", ["#CA562CFF", "#DE8A5AFF", "#EDBB8AFF", "#F6EDBDFF", "#B5B991FF", "#778868FF", "#3D5941FF"])
+    InvFall = LinearSegmentedColormap.from_list("InvFall", ["#CA562CFF", "#F6EDBDFF", "#3D5941FF"])
+
+    # Use correlation values directly for coloring
+    col = PatchCollection(circles, array=corr_values.flatten(), cmap=InvFall, linewidth=0.5)  # copper
+    fig, ax = plt.subplots()
+    ax.add_collection(col)
+
+    # Set axis labels and ticks
+    ax.set(xticks=np.arange(M), yticks=np.arange(N),
+           xticklabels=xlabels, yticklabels=ylabels)
+    ax.set_xticks(np.arange(M + 1) - 0.5, minor=True)
+    ax.set_yticks(np.arange(N + 1) - 0.5, minor=True)
+    # ax.grid(which='minor')
+
+    fig.colorbar(col)
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    #plt.show()
+
+    # Now save the figure as a png file
+    plt.savefig(outputs["correlation_matrix_2021_2024_figure"], format='png', bbox_inches='tight', dpi=300)
+
+
+    '''
     #plt.matshow(corr_matrix, fignum=f.number, cmap='RdBu_r')
+    
     plt.matshow(corr_matrix, cmap='RdBu_r')
 
     # Add a color bar using the same color map as the heatmap
@@ -137,7 +198,7 @@ def plt_and_save_corr_matrix(analysis_df, output_file_name):
         plt.text(j, i, f'{val:.2f}', ha='center', va='center', fontsize=10, color='black')
 
     # Add a title
-    plt.title('Correlation Matrix', fontsize=10)
+    #plt.title('Correlation Matrix', fontsize=10)
 
     # # Save the image as a PNG file
     # plt.savefig('Plot/correlation_matrix_improved.png', format='png', dpi=300, bbox_inches='tight')
@@ -148,6 +209,9 @@ def plt_and_save_corr_matrix(analysis_df, output_file_name):
     # print(corr_matrix)
     # Save correlation matrix to csv
     corr_matrix.to_csv(output_file_name)
+
+    return corr_matrix
+    '''
 
 ########################################################################################################################
 # OLS Analysis

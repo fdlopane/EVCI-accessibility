@@ -30,6 +30,7 @@ generated["POIs"] = "./generated-files/POIs.csv"
 
 outputs = {}
 outputs["correlation_matrix_2021_2024"] = "./output-data/correlation_matrix_2021_2024.csv"
+outputs["correlation_matrix_2021_2024_figure"] = "./output-data/correlation_matrix_2021_2024.png"
 outputs["OLS_supply_2021"] = "./output-data/OLS_supply_2021.csv"
 outputs["OLS_demand_2021"] = "./output-data/OLS_demand_2021.csv"
 

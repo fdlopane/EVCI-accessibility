@@ -24,7 +24,9 @@ from scipy.spatial import distance
 from utils import *
 from spglm.family import Gaussian
 import matplotlib.patches as mpatches
+from matplotlib.collections import PatchCollection
 from descartes import PolygonPatch
+from matplotlib.colors import LinearSegmentedColormap
 
 
 
@@ -1748,14 +1750,32 @@ if check_normality_flag == True:
 
 ########################################################################################################################
 # Correlation matrix
-CSCA_2021_2024_flag = False
+CSCA_2021_2024_flag = True
 
 if CSCA_2021_2024_flag == True:
     # create a df for the correlation matrix
-    corr_matrix_2021_2024 = Regression_21_24[["acc_21", "acc_24", "acc_diff",
-                                              "s_impr",
+    Regression_21_24.rename(columns={"acc_21": "Aj_t1",
+                                     "acc_24": "Aj_t2",
+                                     "acc_diff": "Aj_diff",
+                                     "s_impr": "SVj",
+                                     "EVCI_improvement_rate": "s_imp_rate",
+                                     "d_impr": "DVj",
+                                     "EV_licensing_improvement_rate": "d_imp_rate",
+                                     "s-HHcars_01": "s-HHcars01",
+                                     "s-HHcars_2+": "s-HHcars2+",
+                                     "s-HHT_owned": "s-HHT_own",
+                                     "s-HHT_rented": "s-HHT_rent",
+                                     "s-Acc_det-semidet": "s-semi-det",
+                                     "s-Acc_flat": "s-flat",
+                                     "s-Acc_other": "s-terr-oth",
+                                     "Med_HP_2021": "Med_HP_21",
+                                     "Med_HP_2023": "Med_HP_23",
+                                     "Pop_density": "Pop_dens"}, inplace=True)
+    print(Regression_21_24.columns)
+    corr_matrix_2021_2024 = Regression_21_24[["Aj_t1", "Aj_t2", "Aj_diff",
+                                              "SVj",
                                               #"s_imp_rate",
-                                              "d_impr",
+                                              "DVj",
                                               #"d_imp_rate",
                                               "s-ASG_ABC1", "s-ASG_C2DE",
                                               "s-D3+",
@@ -1767,10 +1787,12 @@ if CSCA_2021_2024_flag == True:
                                               #"RoadKmDen",
                                               "POI_dens"]]
                                               #"job_th_21", "job_th_23"]]
+
     plt_and_save_corr_matrix(corr_matrix_2021_2024, outputs["correlation_matrix_2021_2024"])
+
 ########################################################################################################################
 # Calculate the Gini coefficient for accessibility in 2021 and 2024
-calculate_Gini_flag = True
+calculate_Gini_flag = False
 
 if calculate_Gini_flag == True:
     # Load the accessibility data, make them numpy arrays
@@ -1848,7 +1870,7 @@ if calculate_Gini_flag == True:
 
 ########################################################################################################################
 # Calculate summary statistics for the variables used in the regression from the Regression_21_24 data frame
-calculate_summary_statistics_flag = True
+calculate_summary_statistics_flag = False
 
 if calculate_summary_statistics_flag == True:
     # Create a DataFrame with the variables of interest
