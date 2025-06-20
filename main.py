@@ -1406,7 +1406,7 @@ if SLM_flag == True:
 # GWR analysis
 # reference code: https://github.com/urschrei/Geopython/blob/master/geographically_weighted_regression.ipynb
 
-GWR_flag = False
+GWR_flag = True
 # Normalisation options:
 normalise_dependent_variables = False
 normalise_independent_variables = False
@@ -1502,12 +1502,14 @@ if GWR_flag == True:
         Regression_21_24[i] = (Regression_21_24[i] - Regression_21_24[i].min()) / (
                 Regression_21_24[i].max() - Regression_21_24[i].min())
 
+    '''
     # plot min and max values of the dependent variables
     for dep in cat_indep_variables:
         print("Min and max values of the dependent variable: ", dep)
         print("Min: ", Regression_21_24[dep].min())
         print("Max: ", Regression_21_24[dep].max())
         print()
+    '''
 
     if normalise_dependent_variables == True:
         for i in cat_dep_variables:
@@ -1540,6 +1542,13 @@ if GWR_flag == True:
         # Find optimal bandwidth by minimizing AICc using golden section search algorithm
         bw = Sel_BW(coords, endog, exog).search(criterion='AICc')
         print("GWR Bandwith: ", bw)
+
+        # Save the bandwidth to a .txt log file
+        with open("./output-data/GWR-results/GWR_bandwidth_"+dep+".txt", "a") as f:
+            f.write("GWR Bandwidth for " + dep + ": " + str(bw) + "\n")
+            f.write("Independent variables: " + str(cat_indep_variables) + "\n")
+            f.write("Dependent variable: " + dep + "\n")
+            f.write("\n")
 
         # Instantiate GWR model and estimate parameters and diagnostics
         model = GWR(
@@ -1750,7 +1759,7 @@ if check_normality_flag == True:
 
 ########################################################################################################################
 # Correlation matrix
-CSCA_2021_2024_flag = True
+CSCA_2021_2024_flag = False
 
 if CSCA_2021_2024_flag == True:
     # create a df for the correlation matrix
